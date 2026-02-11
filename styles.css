@@ -217,15 +217,15 @@ textarea {
 }
 
 .node-item {
-  transition: transform 0.15s ease;
+
 }
 
 .node-item:hover {
-  transform: translateY(-1px);
+
 }
 
 .node-rect {
-  transition: stroke 0.15s ease, fill 0.15s ease;
+
 }
 
 .node-item:hover .node-rect {
