@@ -1,0 +1,538 @@
+:root {
+  --bg: #d4d0c8;
+  --panellight: #c7c2b8; 
+  --paneldark: #9a917e;
+  --line: #808080;
+  --text: #000000;
+  --textlight:  #CCCCCC;
+  --textdark: #0d0d0d;
+  --accent: #2f6f5f;
+  --warn: #b03a2e;
+  --muted: #000000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+text {
+  display: block;
+  color: #CFCFCF;
+  fill: var(--panellight);
+  stroke: var(--textdark);
+  color-scheme: none;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: var(--text);
+  color-scheme: none;
+  background-color: var(--bg);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+  font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
+}
+
+.app-header {
+  border-bottom: 1px solid var(--line);
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+button,
+.import-label {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: #e0e0e0;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+button:hover,
+.import-label:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+}
+
+button.danger {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+button:active,
+.import-label:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.delete-node-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.delete-node-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.import-label input {
+  display: none;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 320px) minmax(400px, 1fr) minmax(300px, 360px);
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.layout.layout-minimal {
+  grid-template-columns: 1fr;
+}
+
+.panel {
+  background: var(--paneldark);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  min-height: 150px;
+}
+
+.host-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem 0 0.75rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.75rem;
+}
+
+.host-tab-btn {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  background: #e0e0e0;
+  cursor: pointer;
+}
+
+.host-tab-btn.active {
+  border-color: var(--accent);
+  background: #d7d7d7;
+}
+
+.host-tab-panel {
+  display: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.host-tab-panel.active {
+  display: block;
+}
+
+.connection-actions {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.controls-panel {
+  overflow-y: auto;
+  max-height: calc(100vh - 130px);
+}
+
+.stacked-form {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.95rem;
+  border: 1px solid #ece5d9;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background-color:var(--paneldark);
+}
+
+label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.form-row-hidden {
+  display: none;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  font: inherit;
+  background-color: #fff;
+}
+
+.canvas-panel {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+#topology-canvas {
+  width: 100%;
+  min-height: 650px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background-color: var(--panellight);
+}
+
+#topology-canvas text {
+  fill: var(--panellight) !important;
+}
+
+.node-item {
+  transition: transform 0.15s ease;
+}
+
+.node-item:hover {
+  transform: translateY(-1px);
+}
+
+.node-rect {
+  transition: stroke 0.15s ease, fill 0.15s ease;
+}
+
+.node-item:hover .node-rect {
+  stroke: #6a635a;
+}
+
+.node-edit-bg {
+  fill: #ece8df;
+  stroke: #8f887d;
+  stroke-width: 1;
+}
+
+.node-edit-icon {
+  fill: #2b2824;
+}
+
+.node-edit:hover .node-edit-bg {
+  fill: #f7f3ec;
+  stroke: #5f5a53;
+}
+
+.node-edit {
+  cursor: pointer;
+}
+
+.help-modal-content {
+  max-width: 720px;
+}
+
+.help-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  background-color: var(--paneldark);
+}
+
+.help-content h5 {
+  margin: 0.75rem 0 0.35rem;
+}
+
+.help-content p {
+  margin: 0 0 0.5rem;
+}
+
+.help-content pre {
+  margin: 0 0 0.75rem;
+  background-color: var(--paneldark);
+  color: #000000;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.node-rect {
+  fill: var(--paneldark);
+  stroke: var(--text);
+  stroke-width: 1.6;
+  rx: 10;
+  cursor: move;
+  color-scheme: none;
+}
+
+.node-rect.selected {
+  stroke: var(--accent);
+  stroke-width: 2.6;
+}
+
+.node-label {
+  font-size: 13px;
+  font-weight: 600;
+  fill: #000000;
+  pointer-events: none;
+}
+
+.node-meta {
+  font-size: 11px;
+  fill: #1f1f1f;
+  pointer-events: none;
+}
+
+.link-line {
+  stroke: #3e3b37;
+  stroke-width: 1.7;
+  marker-end: url(#arrow);
+}
+
+.link-label {
+  font-size: 11px;
+  fill: #3a332a;
+  font-weight: 600;
+}
+
+.route-line {
+  stroke-width: 2.4;
+  opacity: 0.9;
+  transition: opacity 0.15s ease, stroke-width 0.15s ease;
+}
+
+.route-line:hover {
+  opacity: 1;
+  stroke-width: 3;
+}
+
+.route-blocked {
+  stroke-dasharray: 6 4;
+}
+
+.route-blocked-marker {
+  stroke-width: 2.4;
+}
+
+.hint {
+  margin-top: 0.5rem;
+  color: var(--muted);
+}
+
+.analysis-panel pre {
+  margin: 0;
+  background-color: #181b1a;
+  color: #e7f6e7;
+  border-radius: 8px;
+  padding: 0.6rem;
+  overflow-x: auto;
+  min-height: 56px;
+}
+
+#validation-output {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+#validation-output li {
+  margin-bottom: 0.35rem;
+}
+
+.w3-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 15, 14, 0.58);
+  padding: 2.2rem 1rem;
+  z-index: 80;
+}
+
+.w3-modal.open {
+  display: block;
+}
+
+.w3-modal-content {
+  margin: 0 auto;
+  max-width: 980px;
+  background-color: #faf8f4;
+  border-radius: 12px;
+  border: 1px solid #d5cebf;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #e6decd;
+}
+
+.modal-header button {
+  font-size: 1.6rem;
+  line-height: 1;
+  padding: 0 0.35rem;
+  border: 0;
+  background: none;
+}
+
+.tab-widget {
+  padding: 0.8rem;
+}
+
+.tab-buttons {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.tab-panel pre {
+  margin: 0;
+  min-height: 310px;
+  max-height: 55vh;
+  overflow: auto;
+  background-color: #111;
+  color: #ecffe9;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.copy-btn {
+  margin-bottom: 0.5rem;
+}
+
+.host-modal-content {
+  max-width: 1280px;
+  max-height: 88vh;
+  height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.host-config-grid {
+  display: grid;
+  grid-template-columns: minmax(370px, 1fr) minmax(420px, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.host-config-editor {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 76vh;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.host-config-output {
+  border: 1px solid #e6decd;
+  border-radius: 10px;
+  background-color: #fffdf8;
+}
+
+.child-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 14, 0.58);
+  display: none;
+  place-items: center;
+  z-index: 120;
+}
+
+.child-modal.open {
+  display: grid;
+}
+
+.child-modal-content {
+  width: min(700px, 96vw);
+  max-height: 88vh;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #d5cebf;
+  background-color: #faf8f4;
+}
+
+.modal-form {
+  margin: 0.8rem;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.status-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+#interface-test-output {
+  margin: 0;
+  background-color: #1b1b1b;
+  color: #d1f3d1;
+  border-radius: 8px;
+  min-height: 66px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.55rem;
+}
+
+@media (max-width: 1160px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-panel {
+    max-height: none;
+  }
+
+  #topology-canvas {
+    min-height: 460px;
+  }
+
+  .host-config-grid {
+    grid-template-columns: 1fr;
+  }
+}

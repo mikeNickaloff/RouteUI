@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RouteTool Network CAD</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>RouteTool Network CAD</h1>
+      <p>Draw topology, declare intent, and configure per-host firewall/routing/wireguard behavior.</p>
+    </div>
+    <div class="toolbar-actions">
+      <button id="open-node-create-btn" type="button">Add Node</button>
+      <button id="configure-selected-btn" type="button">Configuration</button>
+      <button id="open-connections-btn" type="button" class="form-row-hidden">Connections</button>
+      <button id="open-examples-btn" type="button">Examples</button>
+      <button id="open-help-btn" type="button">Help</button>
+      <button id="validate-btn" type="button">Validate</button>
+      <button id="export-btn" type="button">Export Diagram</button>
+      <label class="import-label">
+        Import Diagram
+        <input id="import-input" type="file" accept="application/json">
+      </label>
+    </div>
+  </header>
+
+  <main class="layout layout-minimal">
+    <section class="panel controls-panel form-row-hidden">
+      <h2>Topology Controls</h2>
+
+      <form id="add-node-form" class="stacked-form">
+        <h3>Add Endpoint</h3>
+        <label>Name <input name="name" required></label>
+        <label>Type
+          <select name="type">
+            <option>Public VPS</option>
+            <option>Bare-metal host</option>
+            <option>Container</option>
+            <option>Virtual Machine</option>
+            <option>Router / Gateway</option>
+            <option>Workstation / Client</option>
+            <option>Internet</option>
+          </select>
+        </label>
+        <label>Trust
+          <select name="trust">
+            <option>public</option>
+            <option>private</option>
+            <option>admin</option>
+            <option>untrusted</option>
+          </select>
+        </label>
+        <button type="submit">Add Node</button>
+      </form>
+
+      <div class="stacked-form">
+        <h3>Selected Endpoint</h3>
+        <label>Node
+          <select id="selected-node"></select>
+        </label>
+        <button id="configure-host-btn" type="button">Configuration</button>
+      </div>
+
+      <form id="add-interface-form" class="stacked-form">
+        <h3>Add Interface To Selected Node</h3>
+        <label>Name <input name="name" required placeholder="eth0"></label>
+        <label>Kind
+          <select name="kind">
+            <option>physical</option>
+            <option>virtual</option>
+            <option>bridge</option>
+            <option>wireguard</option>
+            <option>loopback</option>
+            <option>vlan</option>
+            <option>tunnel</option>
+          </select>
+        </label>
+        <label>Address/CIDR <input name="cidr" placeholder="10.10.0.2/24"></label>
+        <label>Direction
+          <select name="direction">
+            <option>bidirectional</option>
+            <option>ingress</option>
+            <option>egress</option>
+          </select>
+        </label>
+        <label><input type="checkbox" name="forwarding"> Forwarding allowed</label>
+        <label><input type="checkbox" name="natAllowed"> NAT allowed</label>
+        <label id="iface-allowedips-row">WireGuard AllowedIPs (comma list) <input name="allowedIps" placeholder="10.0.0.0/24,10.1.0.0/24"></label>
+        <label id="iface-listenport-row">WireGuard Listen Port <input name="listenPort" type="number" min="1" max="65535" placeholder="51820"></label>
+        <button type="submit">Add Interface</button>
+      </form>
+
+    </section>
+
+    <section class="panel canvas-panel">
+      <h2>Diagram</h2>
+      <svg id="topology-canvas" viewBox="0 0 1200 700" aria-label="Network topology"></svg>
+      <p class="hint">Drag nodes to reposition. Connections represent packet intent edges.</p>
+    </section>
+
+    <section class="panel analysis-panel form-row-hidden">
+      <h2>Model Analysis</h2>
+      <div class="stacked-form">
+        <h3>Simulation</h3>
+        <label>Source Interface <select id="sim-src"></select></label>
+        <label>Destination Interface <select id="sim-dst"></select></label>
+        <label>Protocol
+          <select id="sim-proto">
+            <option>tcp</option>
+            <option>udp</option>
+            <option>icmp</option>
+          </select>
+        </label>
+        <label>Port <input id="sim-port" placeholder="22"></label>
+        <button id="simulate-btn" type="button">Simulate Flow</button>
+      </div>
+      <h3>Simulation Result</h3>
+      <pre id="simulation-output"></pre>
+      <h3>Validation Warnings</h3>
+      <ul id="validation-output"></ul>
+      <h3>Current Model JSON</h3>
+      <pre id="model-output"></pre>
+    </section>
+  </main>
+
+  <div id="host-config-modal" class="w3-modal" aria-hidden="true">
+    <div class="w3-modal-content host-modal-content">
+      <header class="modal-header">
+        <h3 id="modal-title">Host Configuration</h3>
+        <button id="close-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div class="host-tab-bar">
+        <button class="host-tab-btn active" data-tab="config" type="button">Config</button>
+        <button class="host-tab-btn" data-tab="interfaces" type="button">Interfaces</button>
+        <button class="host-tab-btn" data-tab="firewall" type="button">Firewall</button>
+        <button class="host-tab-btn" data-tab="connections" type="button">Connections</button>
+        <button class="host-tab-btn" data-tab="containers" type="button">Containers</button>
+        <button class="host-tab-btn" data-tab="test" type="button">Test</button>
+        <button class="host-tab-btn" data-tab="deployment" type="button">Deployment</button>
+      </div>
+
+      <div class="host-tab-panel active" data-panel="config">
+        <div class="stacked-form">
+          <h4>Node Configuration</h4>
+          <label>Name <input id="node-config-name" placeholder="Edge Router"></label>
+          <label>Type
+            <select id="node-config-type">
+              <option>Public VPS</option>
+              <option>Bare-metal host</option>
+              <option>Container</option>
+              <option>Virtual Machine</option>
+              <option>Router / Gateway</option>
+              <option>Workstation / Client</option>
+              <option>Internet</option>
+            </select>
+          </label>
+          <label>Trust
+            <select id="node-config-trust">
+              <option>public</option>
+              <option>private</option>
+              <option>admin</option>
+              <option>untrusted</option>
+            </select>
+          </label>
+        </div>
+        <div class="stacked-form">
+          <button id="delete-node-confirm-btn" type="button" class="danger delete-node-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"/>
+            </svg>
+            Delete this Node
+          </button>
+        </div>
+      </div>
+
+      <div class="host-tab-panel" data-panel="interfaces">
+        <div class="stacked-form">
+          <h4>Interfaces</h4>
+          <label>Interface <select id="host-interface-select"></select></label>
+          <div class="inline-actions">
+            <button id="new-interface-btn" type="button">New Interface</button>
+            <button id="edit-interface-btn" type="button">Edit Interface</button>
+            <button id="delete-interface-btn" type="button" class="danger">Delete Interface</button>
+            <button id="import-interfaces-btn" type="button">Import Interfaces</button>
+          </div>
+          <p id="host-interface-summary" class="status-text">Select an interface to view/edit details.</p>
+        </div>
+      </div>
+
+      <div class="host-tab-panel" data-panel="firewall">
+        <div class="stacked-form">
+          <h4>Host Defaults (UFW)</h4>
+          <label>Inbound default
+            <select id="host-default-inbound"><option>allow</option><option>deny</option></select>
+          </label>
+          <label>Outbound default
+            <select id="host-default-outbound"><option>allow</option><option>deny</option></select>
+          </label>
+          <label>Routed default
+            <select id="host-default-routed"><option>allow</option><option>deny</option></select>
+          </label>
+          <button id="save-host-defaults-btn" type="button">Save Host Defaults</button>
+        </div>
+
+        <div class="stacked-form">
+          <h4>Host Firewall / Routed Rules (UFW)</h4>
+          <label>Rule <select id="host-rule-select"></select></label>
+          <div class="inline-actions">
+            <button id="add-rule-btn" type="button">Add Rule</button>
+            <button id="edit-rule-btn" type="button">Edit Rule</button>
+            <button id="delete-rule-btn" type="button" class="danger">Delete Rule</button>
+            <button id="import-iptables-btn" type="button">Import iptables</button>
+          </div>
+          <p id="host-rule-summary" class="status-text">Machine-wide rules are opened in a child modal for focused editing.</p>
+        </div>
+      </div>
+
+      <div class="host-tab-panel" data-panel="connections">
+        <div class="stacked-form">
+          <h4>Connections</h4>
+          <label>Interface <select id="connections-interface-select"></select></label>
+          <label>Choose a connection <select id="connections-select"></select></label>
+          <div class="inline-actions connection-actions">
+            <button id="connection-new-btn" type="button">New</button>
+            <button id="connection-edit-btn" type="button">Edit</button>
+            <button id="connection-delete-btn" type="button" class="danger">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="host-tab-panel" data-panel="containers">
+        <form id="child-form" class="stacked-form">
+          <h4>Child VMs / Containers</h4>
+          <label>Child <select id="child-select"></select></label>
+          <div class="inline-actions">
+            <button id="add-child-btn" type="button">Add Child</button>
+            <button id="configure-child-btn" type="button">Configuration</button>
+            <button id="delete-child-btn" type="button" class="danger">Delete Child</button>
+          </div>
+          <label>Name <input id="child-name-input" placeholder="ircd-vm"></label>
+          <label>Kind
+            <select id="child-kind-input">
+              <option value="container">container</option>
+              <option value="vm">vm</option>
+            </select>
+          </label>
+          <label>Bind host interface <select id="child-bind-interface-select"></select></label>
+          <button id="save-child-btn" type="submit">Save Child</button>
+          <p id="child-visibility-note" class="status-text"></p>
+        </form>
+      </div>
+
+      <div class="host-tab-panel" data-panel="test">
+        <form id="interface-test-form" class="stacked-form">
+          <h4>Interface Network Test</h4>
+          <label>Source interface <select id="test-source-select"></select></label>
+          <label>Source port (optional) <input id="test-source-port-input" placeholder="40000"></label>
+          <label>Destination interface <select id="test-destination-select"></select></label>
+          <label>Protocol
+            <select id="test-protocol-select">
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+              <option value="icmp">icmp</option>
+            </select>
+          </label>
+          <label id="test-port-row">Destination port <select id="test-port-select"></select></label>
+          <label id="test-custom-port-row" class="form-row-hidden">Custom port <input id="test-custom-port-input" placeholder="8080"></label>
+          <button type="submit">Trace Packet</button>
+          <p id="interface-test-status" class="status-text"></p>
+          <pre id="interface-test-output"></pre>
+        </form>
+      </div>
+
+      <div class="host-tab-panel" data-panel="deployment">
+        <div class="tab-widget">
+          <div class="tab-buttons">
+            <button data-tab="firewall" class="tab-btn active" type="button">Firewall</button>
+            <button data-tab="routing" class="tab-btn" type="button">Routing</button>
+            <button data-tab="wireguard" class="tab-btn" type="button">WireGuard</button>
+          </div>
+          <div class="tab-panel active" data-panel="firewall">
+            <button class="copy-btn" data-copy-target="firewall-pre" type="button">Copy</button>
+            <pre id="firewall-pre"></pre>
+          </div>
+          <div class="tab-panel" data-panel="routing">
+            <button class="copy-btn" data-copy-target="routing-pre" type="button">Copy</button>
+            <pre id="routing-pre"></pre>
+          </div>
+          <div class="tab-panel" data-panel="wireguard">
+            <button class="copy-btn" data-copy-target="wireguard-pre" type="button">Copy</button>
+            <pre id="wireguard-pre"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="interface-config-modal" class="child-modal" aria-hidden="true">
+    <div class="child-modal-content">
+      <header class="modal-header">
+        <h4 id="interface-modal-title">Interface Configuration</h4>
+        <button id="close-interface-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="host-interface-form" class="stacked-form modal-form">
+        <label>Name <input id="iface-name-input" required placeholder="eth0"></label>
+        <label>Type
+          <select id="iface-kind-input">
+            <option>physical</option>
+            <option>virtual</option>
+            <option>bridge</option>
+            <option>wireguard</option>
+            <option>loopback</option>
+            <option>vlan</option>
+            <option>tunnel</option>
+          </select>
+        </label>
+        <label>Address Mode
+          <select id="iface-address-mode-input">
+            <option value="static">static</option>
+            <option value="dhcp">dhcp</option>
+          </select>
+        </label>
+        <label id="iface-ip-row">IP <input id="iface-ip-input" placeholder="10.0.0.2"></label>
+        <label id="iface-netmask-row">Netmask <input id="iface-netmask-input" placeholder="255.255.255.0"></label>
+        <label id="iface-cidr-row">CIDR (optional) <input id="iface-cidr-input" placeholder="10.0.0.2/24"></label>
+        <label id="iface-broadcast-row">Broadcast <input id="iface-broadcast-input" placeholder="10.0.0.255"></label>
+        <label id="iface-gateway-row">Gateway <input id="iface-gateway-input" placeholder="10.0.0.1"></label>
+        <label>Admin state
+          <select id="iface-state-input"><option value="up">up</option><option value="down">down</option></select>
+        </label>
+        <label id="iface-virtual-mode-row">Virtual mode
+          <select id="iface-virtual-mode-input">
+            <option value="vlan">vlan</option>
+            <option value="nat">nat</option>
+            <option value="local-host-only">local-host-only</option>
+          </select>
+        </label>
+        <label id="iface-bridged-row">Bridged interfaces (comma list) <input id="iface-bridged-input" placeholder="eno1,tap0"></label>
+        <label id="iface-allowedips-row-modal">WireGuard AllowedIPs (comma list) <input id="iface-allowedips-input" placeholder="10.0.0.0/24"></label>
+        <label id="iface-listenport-row-modal">WireGuard Listen Port <input id="iface-listenport-input" type="number" min="1" max="65535" placeholder="51820"></label>
+        <div class="inline-actions">
+          <button type="submit">Save Interface</button>
+          <button id="cancel-interface-modal-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="rule-config-modal" class="child-modal" aria-hidden="true">
+    <div class="child-modal-content">
+      <header class="modal-header">
+        <h4 id="rule-modal-title">Firewall / Routed Rule</h4>
+        <button id="close-rule-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="host-rule-form" class="stacked-form modal-form">
+        <label>Rule type
+          <select id="rule-type-input">
+            <option value="inbound">inbound</option>
+            <option value="outbound">outbound</option>
+            <option value="forward">forward</option>
+            <option value="routed">routed</option>
+          </select>
+        </label>
+        <label>Action
+          <select id="rule-action-input">
+            <option value="allow">allow</option>
+            <option value="deny">deny</option>
+            <option value="reject">reject</option>
+            <option value="limit">limit</option>
+          </select>
+        </label>
+        <label>Protocol
+          <select id="rule-protocol-input">
+            <option value="tcp">tcp</option>
+            <option value="udp">udp</option>
+            <option value="icmp">icmp</option>
+            <option value="any">any</option>
+          </select>
+        </label>
+        <label id="rule-single-interface-row">Interface
+          <select id="rule-interface-select"></select>
+        </label>
+        <label id="rule-in-interface-row">In interface
+          <select id="rule-in-interface-select"></select>
+        </label>
+        <label id="rule-out-interface-row">Out interface
+          <select id="rule-out-interface-select"></select>
+        </label>
+        <label>From endpoint (suggested)
+          <select id="rule-from-endpoint-select"></select>
+        </label>
+        <label>From IP/CIDR
+          <input id="rule-from-address-input" placeholder="192.168.0.0/16">
+        </label>
+        <label id="rule-from-port-row">From port
+          <input id="rule-from-port-input" placeholder="5469">
+        </label>
+        <label>To endpoint (suggested)
+          <select id="rule-to-endpoint-select"></select>
+        </label>
+        <label>To IP/CIDR
+          <input id="rule-to-address-input" placeholder="10.0.0.0/8">
+        </label>
+        <label id="rule-to-port-row">To port
+          <input id="rule-to-port-input" placeholder="5469">
+        </label>
+        <label>Comment <input id="rule-description-input" placeholder="Allow app traffic"></label>
+        <div class="inline-actions">
+          <button id="update-rule-btn" type="submit">Save Rule</button>
+          <button id="cancel-rule-modal-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="interface-import-modal" class="child-modal" aria-hidden="true">
+    <div class="child-modal-content">
+      <header class="modal-header">
+        <h4>Import Interfaces</h4>
+        <button id="close-interface-import-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="interface-import-form" class="stacked-form modal-form">
+        <p class="status-text">Paste output from <code>ip -o link</code> and optional <code>ip -o -4 addr</code> / <code>ip route</code>. Import replaces host interfaces in one shot.</p>
+        <label>Pasted output
+          <textarea id="interface-import-input" rows="14" placeholder="2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> ...&#10;2: eth0    inet 10.0.0.2/24 brd 10.0.0.255 scope global eth0"></textarea>
+        </label>
+        <p id="interface-import-status" class="status-text"></p>
+        <div class="inline-actions">
+          <button type="submit">Import</button>
+          <button id="cancel-interface-import-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="firewall-import-modal" class="child-modal" aria-hidden="true">
+    <div class="child-modal-content">
+      <header class="modal-header">
+        <h4>Import iptables</h4>
+        <button id="close-firewall-import-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="firewall-import-form" class="stacked-form modal-form">
+        <p class="status-text">Paste <code>iptables -S</code> or <code>iptables -L</code> output (optional <code>ip route</code> lines too). Import updates host defaults, replaces host firewall rules, and can infer routed connections.</p>
+        <label>Pasted output
+          <textarea id="firewall-import-input" rows="14" placeholder="-P INPUT DROP&#10;-A INPUT -i eth0 -p tcp --dport 6667 -s 10.0.0.2 -j ACCEPT"></textarea>
+        </label>
+        <p id="firewall-import-status" class="status-text"></p>
+        <div class="inline-actions">
+          <button type="submit">Import</button>
+          <button id="cancel-firewall-import-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="node-create-modal" class="w3-modal" aria-hidden="true">
+    <div class="w3-modal-content child-modal-content">
+      <header class="modal-header">
+        <h4>Create Node</h4>
+        <button id="close-node-create-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="node-create-form" class="stacked-form modal-form">
+        <label>Name <input id="node-create-name" required></label>
+        <label>Type
+          <select id="node-create-type">
+            <option>Public VPS</option>
+            <option>Bare-metal host</option>
+            <option>Container</option>
+            <option>Virtual Machine</option>
+            <option>Router / Gateway</option>
+            <option>Workstation / Client</option>
+            <option>Internet</option>
+          </select>
+        </label>
+        <label>Trust
+          <select id="node-create-trust">
+            <option>public</option>
+            <option>private</option>
+            <option>admin</option>
+            <option>untrusted</option>
+          </select>
+        </label>
+        <div class="inline-actions">
+          <button type="submit">Create</button>
+          <button id="cancel-node-create-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="examples-modal" class="w3-modal" aria-hidden="true">
+    <div class="w3-modal-content child-modal-content">
+      <header class="modal-header">
+        <h4>Examples</h4>
+        <button id="close-examples-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="examples-form" class="stacked-form modal-form">
+        <label>Example <select id="examples-select"></select></label>
+        <p class="status-text">Importing an example replaces the current diagram.</p>
+        <div class="inline-actions">
+          <button id="examples-import-btn" type="button">Import</button>
+          <button id="examples-cancel-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="help-modal" class="w3-modal" aria-hidden="true">
+    <div class="w3-modal-content help-modal-content">
+      <header class="modal-header">
+        <h4>Help</h4>
+        <button id="close-help-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <div id="help-content" class="help-content"></div>
+      <div class="inline-actions">
+        <button id="help-close-btn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="connections-modal" class="w3-modal" aria-hidden="true">
+    <div class="w3-modal-content child-modal-content">
+      <header class="modal-header">
+        <h4>Connections</h4>
+        <button id="close-connections-modal-btn" type="button" aria-label="Close">&times;</button>
+      </header>
+      <form id="add-link-form" class="stacked-form modal-form">
+        <h4>Add Connection (Intent Edge)</h4>
+        <label>Source Endpoint Interface <select name="srcInterface" required></select></label>
+        <label id="link-src-port-row">Source Port (optional) <input name="srcPort" placeholder="40000"></label>
+        <label>Destination Endpoint Interface <select name="dstInterface" required></select></label>
+        <label id="link-type-row">Connection Type
+          <select name="linkType">
+            <option>tcp</option>
+            <option>udp</option>
+            <option>icmp</option>
+            <option>wireguard</option>
+            <option>routed</option>
+            <option>nat-boundary</option>
+            <option>firewall-boundary</option>
+          </select>
+        </label>
+        <label id="link-protocol-row">Protocol
+          <select name="protocol">
+            <option>tcp</option>
+            <option>udp</option>
+            <option>icmp</option>
+            <option>any</option>
+          </select>
+        </label>
+        <label id="link-ports-row">Port or Range <input name="ports" placeholder="22 or 1024:65535"></label>
+        <label id="link-nat-row">NAT Behavior
+          <select name="natMode">
+            <option>none</option>
+            <option>snat</option>
+            <option>dnat</option>
+            <option>masquerade</option>
+          </select>
+        </label>
+        <label id="link-policy-row">Policy Route Table <input name="policyTable" placeholder="100"></label>
+        <label>Description <input name="description" placeholder="Workstation SSH to VPS"></label>
+        <label id="link-conntrack-row"><input type="checkbox" name="conntrack" checked> Conntrack applies</label>
+        <div class="inline-actions">
+          <button type="submit">Add Link</button>
+          <button id="cancel-connections-modal-btn" type="button">Close</button>
+        </div>
+      </form>
+      <div class="stacked-form modal-form">
+        <h4>Existing Connections</h4>
+        <select id="connection-select"></select>
+        <button id="delete-link-btn" type="button" class="danger">Delete Connection</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=20260210d"></script>
+</body>
+</html>
