@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "node-e1a2c245",
+      "name": "Home Desktop",
+      "type": "Workstation / Client",
+      "trust": "private",
+      "x": 70,
+      "y": 71.36101531982422,
+      "interfaces": [
+        {
+          "id": "iface-f33737c1",
+          "name": "eth0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "192.168.1.20",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "192.168.1.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "192.168.1.20/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    },
+    {
+      "id": "node-2359a87b",
+      "name": "Home Router",
+      "type": "Router / Gateway",
+      "trust": "private",
+      "x": 78.38783264160156,
+      "y": 223.9304428100586,
+      "interfaces": [
+        {
+          "id": "iface-8b460ea5",
+          "name": "wan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "24.1.2.201",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "24.1.2.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "24.1.2.201/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        },
+        {
+          "id": "iface-29f84a0d",
+          "name": "lan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "192.168.1.1",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "192.168.1.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "192.168.1.1/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [
+        {
+          "id": "rule-7cad321e",
+          "type": "inbound",
+          "action": "deny",
+          "protocol": "tcp",
+          "interfaceId": "iface-8b460ea5",
+          "inInterfaceId": "",
+          "outInterfaceId": "",
+          "fromAddress": "",
+          "toAddress": "192.168.1.1/24",
+          "fromPort": "",
+          "toPort": "",
+          "port": "",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": "Block inbound WAN"
+        }
+      ],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "allow"
+      },
+      "children": []
+    },
+    {
+      "id": "node-70b9074e",
+      "name": "Internet",
+      "type": "Internet",
+      "trust": "untrusted",
+      "x": 450.9223327636719,
+      "y": 226.8667449951172,
+      "interfaces": [
+        {
+          "id": "iface-926cbb56",
+          "name": "isp0",
+          "kind": "virtual",
+          "addressMode": "static",
+          "ip": "24.1.2.1",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "",
+          "state": "up",
+          "virtualMode": "nat",
+          "bridgedInterfaces": "",
+          "cidr": "24.1.2.1/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "allow",
+        "outbound": "allow",
+        "routed": "allow"
+      },
+      "children": []
+    },
+    {
+      "id": "node-b5b94eca",
+      "name": "example.com",
+      "type": "Bare-metal host",
+      "trust": "public",
+      "x": 788.6710510253906,
+      "y": 221.17330932617188,
+      "interfaces": [
+        {
+          "id": "iface-8c9e75cb",
+          "name": "eth0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "28.24.1.56",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "28.24.1.56/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [
+        {
+          "id": "rule-6fc97d7c",
+          "type": "inbound",
+          "action": "allow",
+          "protocol": "tcp",
+          "interfaceId": "iface-8c9e75cb",
+          "inInterfaceId": "",
+          "outInterfaceId": "",
+          "fromAddress": "",
+          "toAddress": "",
+          "fromPort": "",
+          "toPort": "443",
+          "port": "443",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": "allow web page traffic"
+        }
+      ],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    }
+  ],
+  "links": [
+    {
+      "id": "link-9dc34095",
+      "srcNodeId": "node-2359a87b",
+      "srcInterfaceId": "iface-8b460ea5",
+      "dstNodeId": "node-70b9074e",
+      "dstInterfaceId": "iface-926cbb56",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "snat",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Internet"
+    },
+    {
+      "id": "link-84084247",
+      "srcNodeId": "node-e1a2c245",
+      "srcInterfaceId": "iface-f33737c1",
+      "dstNodeId": "node-2359a87b",
+      "dstInterfaceId": "iface-29f84a0d",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "snat",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "LAN"
+    },
+    {
+      "id": "link-bc51942d",
+      "srcNodeId": "node-70b9074e",
+      "srcInterfaceId": "iface-926cbb56",
+      "dstNodeId": "node-b5b94eca",
+      "dstInterfaceId": "iface-8c9e75cb",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
+    },
+    {
+      "id": "link-3cadb19d",
+      "srcNodeId": "node-70b9074e",
+      "srcInterfaceId": "iface-926cbb56",
+      "dstNodeId": "node-b5b94eca",
+      "dstInterfaceId": "iface-8c9e75cb",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Internet Connection"
+    },
+    {
+      "id": "link-9de24030",
+      "srcNodeId": "node-b5b94eca",
+      "srcInterfaceId": "iface-8c9e75cb",
+      "dstNodeId": "node-70b9074e",
+      "dstInterfaceId": "iface-926cbb56",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
+    },
+    {
+      "id": "link-4e4903b2",
+      "srcNodeId": "node-70b9074e",
+      "srcInterfaceId": "iface-926cbb56",
+      "dstNodeId": "node-2359a87b",
+      "dstInterfaceId": "iface-8b460ea5",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
+    },
+    {
+      "id": "link-98247f0b",
+      "srcNodeId": "node-2359a87b",
+      "srcInterfaceId": "iface-29f84a0d",
+      "dstNodeId": "node-e1a2c245",
+      "dstInterfaceId": "iface-f33737c1",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
+    }
+  ],
+  "metadata": {
+    "updatedAt": "2026-02-10T11:31:23.692Z"
+  }
+}
