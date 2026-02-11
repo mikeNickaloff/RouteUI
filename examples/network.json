@@ -1,0 +1,652 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "node-home-desktop",
+      "name": "Home Desktop",
+      "type": "Workstation / Client",
+      "trust": "private",
+      "x": 14.507461547851562,
+      "y": 496.93756103515625,
+      "interfaces": [
+        {
+          "id": "iface-home-desktop-eth0",
+          "name": "eth0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "192.168.0.10",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "192.168.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "192.168.0.10/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    },
+    {
+      "id": "node-home-laptop",
+      "name": "Home Laptop",
+      "type": "Workstation / Client",
+      "trust": "private",
+      "x": 11.815353393554688,
+      "y": 255.2441177368164,
+      "interfaces": [
+        {
+          "id": "iface-home-laptop-wifi",
+          "name": "wlan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "192.168.0.11",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "192.168.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "192.168.0.11/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    },
+    {
+      "id": "node-home-assistant",
+      "name": "Google Home",
+      "type": "Workstation / Client",
+      "trust": "private",
+      "x": 36.03770446777344,
+      "y": 87.6917495727539,
+      "interfaces": [
+        {
+          "id": "iface-home-assistant-wifi",
+          "name": "wlan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "192.168.0.20",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "192.168.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "192.168.0.20/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    },
+    {
+      "id": "node-home-router",
+      "name": "Home Router",
+      "type": "Router / Gateway",
+      "trust": "private",
+      "x": 265.026611328125,
+      "y": 272.6469497680664,
+      "interfaces": [
+        {
+          "id": "iface-home-router-wan",
+          "name": "wan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "24.1.2.201",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "24.1.2.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "24.1.2.201/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": true,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        },
+        {
+          "id": "iface-home-router-lan",
+          "name": "lan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "192.168.0.1",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "192.168.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "192.168.0.1/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": true,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [
+        {
+          "id": "rule-home-router-wan-block",
+          "type": "inbound",
+          "action": "deny",
+          "protocol": "any",
+          "interfaceId": "iface-home-router-wan",
+          "inInterfaceId": "",
+          "outInterfaceId": "",
+          "fromAddress": "",
+          "toAddress": "192.168.0.0/24",
+          "fromPort": "",
+          "toPort": "",
+          "port": "",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": "Block inbound WAN traffic"
+        }
+      ],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "allow"
+      },
+      "children": []
+    },
+    {
+      "id": "node-internet",
+      "name": "Internet",
+      "type": "Internet",
+      "trust": "untrusted",
+      "x": 562.4911499023438,
+      "y": 347.5592346191406,
+      "interfaces": [
+        {
+          "id": "iface-internet-isp",
+          "name": "isp0",
+          "kind": "virtual",
+          "addressMode": "static",
+          "ip": "24.1.2.1",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "",
+          "state": "up",
+          "virtualMode": "nat",
+          "bridgedInterfaces": "",
+          "cidr": "24.1.2.1/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "allow",
+        "outbound": "allow",
+        "routed": "allow"
+      },
+      "children": []
+    },
+    {
+      "id": "node-google-router",
+      "name": "Google Router",
+      "type": "Router / Gateway",
+      "trust": "public",
+      "x": 575.4175415039062,
+      "y": 45.32171630859375,
+      "interfaces": [
+        {
+          "id": "iface-google-router-wan",
+          "name": "wan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "24.1.2.50",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "24.1.2.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "24.1.2.50/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": true,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        },
+        {
+          "id": "iface-google-router-lan",
+          "name": "lan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "10.10.0.1",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "10.10.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "10.10.0.1/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": true,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "allow"
+      },
+      "children": []
+    },
+    {
+      "id": "node-google-home-server",
+      "name": "Google Home Server",
+      "type": "Bare-metal host",
+      "trust": "public",
+      "x": 894.9338989257812,
+      "y": 59.7354736328125,
+      "interfaces": [
+        {
+          "id": "iface-google-home-server-eth0",
+          "name": "eth0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "10.10.0.10",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "10.10.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "10.10.0.10/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [
+        {
+          "id": "rule-google-home-inbound",
+          "type": "inbound",
+          "action": "allow",
+          "protocol": "tcp",
+          "interfaceId": "iface-google-home-server-eth0",
+          "inInterfaceId": "",
+          "outInterfaceId": "",
+          "fromAddress": "",
+          "toAddress": "10.10.0.10",
+          "fromPort": "",
+          "toPort": "8008",
+          "port": "8008",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": "Allow Google Home service"
+        }
+      ],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    },
+    {
+      "id": "node-youtube-router",
+      "name": "YouTube Router",
+      "type": "Router / Gateway",
+      "trust": "public",
+      "x": 600.5092163085938,
+      "y": 543.7711181640625,
+      "interfaces": [
+        {
+          "id": "iface-youtube-router-wan",
+          "name": "wan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "24.1.2.60",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "24.1.2.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "24.1.2.60/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": true,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        },
+        {
+          "id": "iface-youtube-router-lan",
+          "name": "lan0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "10.20.0.1",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "10.20.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "10.20.0.1/24",
+          "direction": "bidirectional",
+          "forwarding": true,
+          "natAllowed": true,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "allow"
+      },
+      "children": []
+    },
+    {
+      "id": "node-web-server",
+      "name": "Web Server",
+      "type": "Bare-metal host",
+      "trust": "public",
+      "x": 968.761474609375,
+      "y": 448.9437561035156,
+      "interfaces": [
+        {
+          "id": "iface-web-server-eth0",
+          "name": "eth0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "10.20.0.10",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "10.20.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "10.20.0.10/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [
+        {
+          "id": "rule-web-inbound-https",
+          "type": "inbound",
+          "action": "allow",
+          "protocol": "tcp",
+          "interfaceId": "iface-web-server-eth0",
+          "inInterfaceId": "",
+          "outInterfaceId": "",
+          "fromAddress": "",
+          "toAddress": "10.20.0.10",
+          "fromPort": "",
+          "toPort": "443",
+          "port": "443",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": "Public HTTPS"
+        }
+      ],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    },
+    {
+      "id": "node-storage-server",
+      "name": "Storage Server",
+      "type": "Bare-metal host",
+      "trust": "private",
+      "x": 974.3079833984375,
+      "y": 587.7532348632812,
+      "interfaces": [
+        {
+          "id": "iface-storage-server-eth0",
+          "name": "eth0",
+          "kind": "physical",
+          "addressMode": "static",
+          "ip": "10.20.0.20",
+          "netmask": "255.255.255.0",
+          "broadcast": "",
+          "gateway": "10.20.0.1",
+          "state": "up",
+          "virtualMode": "vlan",
+          "bridgedInterfaces": "",
+          "cidr": "10.20.0.20/24",
+          "direction": "bidirectional",
+          "forwarding": false,
+          "natAllowed": false,
+          "allowedIps": "",
+          "listenPort": "",
+          "firewallRules": []
+        }
+      ],
+      "firewallRules": [
+        {
+          "id": "rule-storage-allow-web",
+          "type": "inbound",
+          "action": "allow",
+          "protocol": "tcp",
+          "interfaceId": "iface-storage-server-eth0",
+          "inInterfaceId": "",
+          "outInterfaceId": "",
+          "fromAddress": "10.20.0.10",
+          "toAddress": "10.20.0.20",
+          "fromPort": "",
+          "toPort": "9000",
+          "port": "9000",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": "Allow storage access from Web Server only"
+        }
+      ],
+      "defaults": {
+        "inbound": "deny",
+        "outbound": "allow",
+        "routed": "deny"
+      },
+      "children": []
+    }
+  ],
+  "links": [
+    {
+      "id": "link-home-desktop-lan",
+      "srcNodeId": "node-home-desktop",
+      "srcInterfaceId": "iface-home-desktop-eth0",
+      "dstNodeId": "node-home-router",
+      "dstInterfaceId": "iface-home-router-lan",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Home LAN"
+    },
+    {
+      "id": "link-home-laptop-lan",
+      "srcNodeId": "node-home-laptop",
+      "srcInterfaceId": "iface-home-laptop-wifi",
+      "dstNodeId": "node-home-router",
+      "dstInterfaceId": "iface-home-router-lan",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Home LAN"
+    },
+    {
+      "id": "link-home-assistant-lan",
+      "srcNodeId": "node-home-assistant",
+      "srcInterfaceId": "iface-home-assistant-wifi",
+      "dstNodeId": "node-home-router",
+      "dstInterfaceId": "iface-home-router-lan",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Home LAN"
+    },
+    {
+      "id": "link-home-router-internet",
+      "srcNodeId": "node-home-router",
+      "srcInterfaceId": "iface-home-router-wan",
+      "dstNodeId": "node-internet",
+      "dstInterfaceId": "iface-internet-isp",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "snat",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Home Router to Internet"
+    },
+    {
+      "id": "link-internet-google-router",
+      "srcNodeId": "node-internet",
+      "srcInterfaceId": "iface-internet-isp",
+      "dstNodeId": "node-google-router",
+      "dstInterfaceId": "iface-google-router-wan",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "8008",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Google Home inbound"
+    },
+    {
+      "id": "link-google-router-home-server",
+      "srcNodeId": "node-google-router",
+      "srcInterfaceId": "iface-google-router-lan",
+      "dstNodeId": "node-google-home-server",
+      "dstInterfaceId": "iface-google-home-server-eth0",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Google Home Server LAN"
+    },
+    {
+      "id": "link-internet-youtube-router",
+      "srcNodeId": "node-internet",
+      "srcInterfaceId": "iface-internet-isp",
+      "dstNodeId": "node-youtube-router",
+      "dstInterfaceId": "iface-youtube-router-wan",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "443",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Public HTTPS to YouTube"
+    },
+    {
+      "id": "link-youtube-router-web",
+      "srcNodeId": "node-youtube-router",
+      "srcInterfaceId": "iface-youtube-router-lan",
+      "dstNodeId": "node-web-server",
+      "dstInterfaceId": "iface-web-server-eth0",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "YouTube LAN"
+    },
+    {
+      "id": "link-youtube-router-storage",
+      "srcNodeId": "node-youtube-router",
+      "srcInterfaceId": "iface-youtube-router-lan",
+      "dstNodeId": "node-storage-server",
+      "dstInterfaceId": "iface-storage-server-eth0",
+      "linkType": "routed",
+      "protocol": "any",
+      "ports": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Storage LAN"
+    },
+    {
+      "id": "link-web-storage",
+      "srcNodeId": "node-web-server",
+      "srcInterfaceId": "iface-web-server-eth0",
+      "dstNodeId": "node-storage-server",
+      "dstInterfaceId": "iface-storage-server-eth0",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "9000",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": "Web server to storage"
+    }
+  ],
+  "metadata": {
+    "updatedAt": "2026-02-10T16:13:45.284Z"
+  }
+}
