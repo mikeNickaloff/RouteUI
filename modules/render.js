@@ -39,20 +39,60 @@ export function ensureCanvasDefs(svg) {
     return;
   }
   const defs = svgEl("defs");
-  const marker = svgEl("marker");
-  marker.setAttribute("id", "arrow");
-  marker.setAttribute("viewBox", "0 0 10 10");
-  marker.setAttribute("refX", "9");
-  marker.setAttribute("refY", "5");
-  marker.setAttribute("markerWidth", "7");
-  marker.setAttribute("markerHeight", "7");
-  marker.setAttribute("orient", "auto-start-reverse");
+  const arrowMarker = svgEl("marker");
+  arrowMarker.setAttribute("id", "arrow");
+  arrowMarker.setAttribute("viewBox", "0 0 10 10");
+  arrowMarker.setAttribute("refX", "9");
+  arrowMarker.setAttribute("refY", "5");
+  arrowMarker.setAttribute("markerWidth", "7");
+  arrowMarker.setAttribute("markerHeight", "7");
+  arrowMarker.setAttribute("orient", "auto-start-reverse");
 
-  const path = svgEl("path");
-  path.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
-  path.setAttribute("fill", "#3e3b37");
-  marker.appendChild(path);
-  defs.appendChild(marker);
+  const arrowPath = svgEl("path");
+  arrowPath.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+  arrowPath.setAttribute("fill", "context-stroke");
+  arrowMarker.appendChild(arrowPath);
+  defs.appendChild(arrowMarker);
+
+  const circleMarker = svgEl("marker");
+  circleMarker.setAttribute("id", "marker-circle");
+  circleMarker.setAttribute("viewBox", "0 0 12 12");
+  circleMarker.setAttribute("refX", "10");
+  circleMarker.setAttribute("refY", "6");
+  circleMarker.setAttribute("markerWidth", "8");
+  circleMarker.setAttribute("markerHeight", "8");
+  circleMarker.setAttribute("orient", "auto-start-reverse");
+  const circleNode = svgEl("circle");
+  circleNode.setAttribute("cx", "6");
+  circleNode.setAttribute("cy", "6");
+  circleNode.setAttribute("r", "4");
+  circleNode.setAttribute("fill", "none");
+  circleNode.setAttribute("stroke", "context-stroke");
+  circleNode.setAttribute("stroke-width", "1.7");
+  circleMarker.appendChild(circleNode);
+  defs.appendChild(circleMarker);
+
+  const arrowCircleMarker = svgEl("marker");
+  arrowCircleMarker.setAttribute("id", "marker-arrow-circle");
+  arrowCircleMarker.setAttribute("viewBox", "0 0 14 14");
+  arrowCircleMarker.setAttribute("refX", "12");
+  arrowCircleMarker.setAttribute("refY", "7");
+  arrowCircleMarker.setAttribute("markerWidth", "10");
+  arrowCircleMarker.setAttribute("markerHeight", "10");
+  arrowCircleMarker.setAttribute("orient", "auto-start-reverse");
+  const comboCircle = svgEl("circle");
+  comboCircle.setAttribute("cx", "6");
+  comboCircle.setAttribute("cy", "7");
+  comboCircle.setAttribute("r", "4.5");
+  comboCircle.setAttribute("fill", "none");
+  comboCircle.setAttribute("stroke", "context-stroke");
+  comboCircle.setAttribute("stroke-width", "1.5");
+  const comboArrow = svgEl("path");
+  comboArrow.setAttribute("d", "M 6 4.8 L 12.2 7 L 6 9.2 z");
+  comboArrow.setAttribute("fill", "context-stroke");
+  arrowCircleMarker.appendChild(comboCircle);
+  arrowCircleMarker.appendChild(comboArrow);
+  defs.appendChild(arrowCircleMarker);
   svg.appendChild(defs);
 }
 
@@ -65,6 +105,7 @@ export function renderTopology(
   onOpenNode,
   routeOverlays = [],
   showLinks = true,
+  multiSelectIds = [],
 ) {
   ensureCanvasDefs(svg);
   svg.querySelectorAll("g.render-item").forEach((item) => item.remove());
@@ -110,22 +151,96 @@ export function renderTopology(
     const routeGroup = svgEl("g");
     routeGroup.classList.add("render-item", "route-layer");
     const edgeBuckets = new Map();
-    const edges = [];
+    const dedupedEdges = new Map();
+    const roleByNodeId = new Map();
+    const isMultiSelectMode = Array.isArray(multiSelectIds) && multiSelectIds.length > 1;
+    const selectedMarkerNodeIds = new Set(
+      isMultiSelectMode
+        ? multiSelectIds
+        : selectedNodeId
+        ? [selectedNodeId]
+        : [],
+    );
+    const transitNonSelectedNodeIds = new Set();
+
+    state.nodes.forEach((node) => {
+      const defaults = node.defaults || {};
+      roleByNodeId.set(node.id, {
+        destination: defaults.inbound !== "deny",
+        transit: defaults.routed !== "deny",
+      });
+    });
+
+    if (isMultiSelectMode) {
+      routeOverlays.forEach((route) => {
+        const path = route.path || [];
+        for (let i = 1; i < path.length - 1; i += 1) {
+          const nodeId = path[i];
+          if (!selectedMarkerNodeIds.has(nodeId)) {
+            transitNonSelectedNodeIds.add(nodeId);
+          }
+        }
+      });
+    }
 
     routeOverlays.forEach((route) => {
       const path = route.path || [];
       for (let i = 0; i < path.length - 1; i += 1) {
         const fromId = path[i];
         const toId = path[i + 1];
-        const key = `${fromId}|${toId}`;
-        const edge = { route, fromId, toId, segmentIndex: i };
-        edges.push(edge);
-        if (!edgeBuckets.has(key)) {
-          edgeBuckets.set(key, []);
+        const sourceNodeId = route.srcNodeId || "";
+        const sourceInterfaceId = route.srcInterfaceId || "";
+        const dstNodeId = route.dstNodeId || "";
+        const dstInterfaceId = route.dstInterfaceId || "";
+        const direction = route.direction || "";
+        const flowKey = route.flowKey || `${sourceNodeId}|${sourceInterfaceId}|${dstNodeId}|${dstInterfaceId}`;
+        const segmentInterfaceKey = Array.isArray(route.segmentKeys)
+          ? (route.segmentKeys[i] || `${sourceNodeId}|${sourceInterfaceId}|${toId}`)
+          : `${sourceNodeId}|${sourceInterfaceId}|${toId}`;
+        const bucketKey = `${fromId}|${toId}`;
+        const dedupeKey = segmentInterfaceKey;
+        const isBlockedSegment = route.blocked && route.blockedSegmentIndex === i;
+
+        if (!dedupedEdges.has(dedupeKey)) {
+          const edge = {
+            route,
+            fromId,
+            toId,
+            segmentIndex: i,
+            flowKey,
+            direction,
+            color: route.color,
+            isBlockedSegment,
+            blockedNodeId: isBlockedSegment ? (route.blockedNodeId || "") : "",
+            blockedAtPathIndex: isBlockedSegment ? route.blockedAtPathIndex : null,
+            blockedAtNodeName: isBlockedSegment ? (route.blockedAtNodeName || "") : "",
+          };
+          dedupedEdges.set(dedupeKey, edge);
+          if (!edgeBuckets.has(bucketKey)) {
+            edgeBuckets.set(bucketKey, []);
+          }
+          edgeBuckets.get(bucketKey).push(edge);
+        } else if (isBlockedSegment) {
+          const edge = dedupedEdges.get(dedupeKey);
+          edge.isBlockedSegment = true;
+          edge.blockedNodeId = edge.blockedNodeId || route.blockedNodeId || "";
+          edge.blockedAtPathIndex = Number.isInteger(edge.blockedAtPathIndex)
+            ? edge.blockedAtPathIndex
+            : route.blockedAtPathIndex;
+          edge.blockedAtNodeName = edge.blockedAtNodeName || route.blockedAtNodeName || "";
         }
-        edgeBuckets.get(key).push(edge);
       }
     });
+
+    const directionPairCounts = new Map();
+    for (const key of edgeBuckets.keys()) {
+      const [fromId, toId] = key.split("|");
+      const pairKey = fromId < toId ? `${fromId}|${toId}` : `${toId}|${fromId}`;
+      if (!directionPairCounts.has(pairKey)) {
+        directionPairCounts.set(pairKey, new Set());
+      }
+      directionPairCounts.get(pairKey).add(key);
+    }
 
     for (const [key, bucket] of edgeBuckets.entries()) {
       const [fromId, toId] = key.split("|");
@@ -143,9 +258,13 @@ export function renderTopology(
       const length = Math.hypot(dx, dy) || 1;
       const nx = -dy / length;
       const ny = dx / length;
+      const pairKey = fromId < toId ? `${fromId}|${toId}` : `${toId}|${fromId}`;
+      const pairDirections = directionPairCounts.get(pairKey);
+      const hasOppositeDirection = pairDirections && pairDirections.size > 1;
+      const directionalBaseOffset = hasOppositeDirection ? (fromId < toId ? -7 : 7) : 0;
 
       bucket.forEach((edge, index) => {
-        const offset = (index - (bucket.length - 1) / 2) * 6;
+        const offset = directionalBaseOffset + ((index - (bucket.length - 1) / 2) * 10);
         const ox = nx * offset;
         const oy = ny * offset;
         const x1 = fromEdge.x + ox;
@@ -155,21 +274,50 @@ export function renderTopology(
 
         const line = svgEl("line");
         line.classList.add("route-line");
-        if (edge.route.blocked) {
-          line.classList.add("route-blocked");
+        const isBlockedSegment = Boolean(edge.isBlockedSegment);
+        if (edge.direction === "inbound") {
+          line.classList.add("route-direction-inbound");
+        } else if (edge.direction === "outbound") {
+          line.classList.add("route-direction-outbound");
         }
         line.setAttribute("x1", String(x1));
         line.setAttribute("y1", String(y1));
         line.setAttribute("x2", String(x2));
         line.setAttribute("y2", String(y2));
-        line.setAttribute("stroke", edge.route.color);
-        if (!edge.route.blocked) {
-          line.setAttribute("marker-end", "url(#arrow)");
+        line.setAttribute("stroke", edge.color);
+        if (!isBlockedSegment) {
+          if (isMultiSelectMode && transitNonSelectedNodeIds.has(edge.fromId)) {
+            line.setAttribute("marker-start", "url(#arrow)");
+          }
+
+          let markerEndId = "";
+          if (selectedMarkerNodeIds.has(edge.toId)) {
+            const role = roleByNodeId.get(edge.toId) || { destination: false, transit: false };
+            markerEndId = role.destination && role.transit
+              ? "marker-arrow-circle"
+              : role.destination
+              ? "marker-circle"
+              : role.transit
+              ? "arrow"
+              : "";
+          } else if (isMultiSelectMode && transitNonSelectedNodeIds.has(edge.toId)) {
+            markerEndId = "arrow";
+          }
+          if (markerEndId) {
+            line.setAttribute("marker-end", `url(#${markerEndId})`);
+          }
+        }
+        if (isBlockedSegment && edge.blockedAtNodeName) {
+          const lineTitle = svgEl("title");
+          lineTitle.textContent = `Blocked at ${edge.blockedAtNodeName}`;
+          line.appendChild(lineTitle);
         }
         routeGroup.appendChild(line);
 
-        if (edge.route.blockedMarker && edge.route.blockedMarker.segmentIndex === edge.segmentIndex) {
-          const markerAtStart = edge.route.blockedMarker.position === "start";
+        if (isBlockedSegment) {
+          const markerAtStart = edge.blockedNodeId
+            ? edge.blockedNodeId === edge.fromId
+            : edge.blockedAtPathIndex === edge.segmentIndex;
           const mx = markerAtStart ? x1 : x2;
           const my = markerAtStart ? y1 : y2;
           const barHalf = 6;
@@ -189,8 +337,8 @@ export function renderTopology(
           cross2.setAttribute("y1", String(my - ry + ty));
           cross2.setAttribute("x2", String(mx + rx - tx));
           cross2.setAttribute("y2", String(my + ry - ty));
-          cross.setAttribute("stroke", edge.route.color);
-          cross2.setAttribute("stroke", edge.route.color);
+          cross.setAttribute("stroke", edge.color);
+          cross2.setAttribute("stroke", edge.color);
           routeGroup.appendChild(cross);
           routeGroup.appendChild(cross2);
         }
@@ -199,6 +347,8 @@ export function renderTopology(
 
     svg.appendChild(routeGroup);
   }
+
+  const multiSelectSet = new Set(multiSelectIds || []);
 
   for (const node of [...state.nodes].sort((a, b) => a.name.localeCompare(b.name))) {
     const group = svgEl("g");
@@ -209,6 +359,9 @@ export function renderTopology(
     rect.classList.add("node-rect");
     if (node.id === selectedNodeId) {
       rect.classList.add("selected");
+    }
+    if (multiSelectSet.has(node.id)) {
+      rect.classList.add("multi-selected");
     }
     rect.setAttribute("x", "0");
     rect.setAttribute("y", "0");
