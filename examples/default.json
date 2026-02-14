@@ -7,7 +7,7 @@
       "type": "Workstation / Client",
       "trust": "private",
       "x": 70,
-      "y": 71.36101531982422,
+      "y": 75.15201568603516,
       "interfaces": [
         {
           "id": "iface-f33737c1",
@@ -43,8 +43,8 @@
       "name": "Home Router",
       "type": "Router / Gateway",
       "trust": "private",
-      "x": 78.38783264160156,
-      "y": 223.9304428100586,
+      "x": 82.40547180175781,
+      "y": 231.39177703857422,
       "interfaces": [
         {
           "id": "iface-8b460ea5",
@@ -89,27 +89,44 @@
       ],
       "firewallRules": [
         {
-          "id": "rule-7cad321e",
-          "type": "inbound",
-          "action": "deny",
+          "id": "rule-d4c5fb31",
+          "type": "routed",
+          "action": "allow",
           "protocol": "tcp",
-          "interfaceId": "iface-8b460ea5",
-          "inInterfaceId": "",
-          "outInterfaceId": "",
+          "interfaceId": "",
+          "inInterfaceId": "iface-29f84a0d",
+          "outInterfaceId": "iface-8b460ea5",
           "fromAddress": "",
-          "toAddress": "192.168.1.1/24",
+          "toAddress": "",
           "fromPort": "",
           "toPort": "",
           "port": "",
           "peerNodeId": "",
           "peerInterfaceId": "",
-          "description": "Block inbound WAN"
+          "description": ""
+        },
+        {
+          "id": "rule-ef29c205",
+          "type": "routed",
+          "action": "deny",
+          "protocol": "tcp",
+          "interfaceId": "",
+          "inInterfaceId": "iface-8b460ea5",
+          "outInterfaceId": "iface-29f84a0d",
+          "fromAddress": "",
+          "toAddress": "",
+          "fromPort": "",
+          "toPort": "",
+          "port": "",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": ""
         }
       ],
       "defaults": {
         "inbound": "deny",
         "outbound": "allow",
-        "routed": "allow"
+        "routed": "deny"
       },
       "children": []
     },
@@ -118,8 +135,8 @@
       "name": "Internet",
       "type": "Internet",
       "trust": "untrusted",
-      "x": 450.9223327636719,
-      "y": 226.8667449951172,
+      "x": 443.02960205078125,
+      "y": 233.18748474121094,
       "interfaces": [
         {
           "id": "iface-926cbb56",
@@ -144,8 +161,8 @@
       ],
       "firewallRules": [],
       "defaults": {
-        "inbound": "allow",
-        "outbound": "allow",
+        "inbound": "deny",
+        "outbound": "deny",
         "routed": "allow"
       },
       "children": []
@@ -155,7 +172,7 @@
       "name": "example.com",
       "type": "Bare-metal host",
       "trust": "public",
-      "x": 788.6710510253906,
+      "x": 791.9649353027344,
       "y": 221.17330932617188,
       "interfaces": [
         {
@@ -199,7 +216,7 @@
         }
       ],
       "defaults": {
-        "inbound": "deny",
+        "inbound": "allow",
         "outbound": "allow",
         "routed": "deny"
       },
@@ -220,20 +237,6 @@
       "conntrack": true,
       "policyTable": "",
       "description": "Internet"
-    },
-    {
-      "id": "link-84084247",
-      "srcNodeId": "node-e1a2c245",
-      "srcInterfaceId": "iface-f33737c1",
-      "dstNodeId": "node-2359a87b",
-      "dstInterfaceId": "iface-29f84a0d",
-      "linkType": "tcp",
-      "protocol": "tcp",
-      "ports": "",
-      "natMode": "snat",
-      "conntrack": true,
-      "policyTable": "",
-      "description": "LAN"
     },
     {
       "id": "link-bc51942d",
@@ -278,20 +281,6 @@
       "description": ""
     },
     {
-      "id": "link-4e4903b2",
-      "srcNodeId": "node-70b9074e",
-      "srcInterfaceId": "iface-926cbb56",
-      "dstNodeId": "node-2359a87b",
-      "dstInterfaceId": "iface-8b460ea5",
-      "linkType": "tcp",
-      "protocol": "tcp",
-      "ports": "",
-      "natMode": "none",
-      "conntrack": true,
-      "policyTable": "",
-      "description": ""
-    },
-    {
       "id": "link-98247f0b",
       "srcNodeId": "node-2359a87b",
       "srcInterfaceId": "iface-29f84a0d",
@@ -304,9 +293,39 @@
       "conntrack": true,
       "policyTable": "",
       "description": ""
+    },
+    {
+      "id": "link-54de74d0",
+      "srcNodeId": "node-2359a87b",
+      "srcInterfaceId": "iface-29f84a0d",
+      "dstNodeId": "node-2359a87b",
+      "dstInterfaceId": "iface-8b460ea5",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "sourcePort": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
+    },
+    {
+      "id": "link-e53f3971",
+      "srcNodeId": "node-e1a2c245",
+      "srcInterfaceId": "iface-f33737c1",
+      "dstNodeId": "node-2359a87b",
+      "dstInterfaceId": "iface-29f84a0d",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "sourcePort": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
     }
   ],
   "metadata": {
-    "updatedAt": "2026-02-10T11:31:23.692Z"
+    "updatedAt": "2026-02-14T10:20:53.324Z"
   }
 }

@@ -43,8 +43,8 @@
       "name": "Home Laptop",
       "type": "Workstation / Client",
       "trust": "private",
-      "x": 11.815353393554688,
-      "y": 255.2441177368164,
+      "x": 19.218215942382812,
+      "y": 251.51529693603516,
       "interfaces": [
         {
           "id": "iface-home-laptop-wifi",
@@ -216,10 +216,28 @@
           "firewallRules": []
         }
       ],
-      "firewallRules": [],
+      "firewallRules": [
+        {
+          "id": "rule-afeba16b",
+          "type": "routed",
+          "action": "allow",
+          "protocol": "tcp",
+          "interfaceId": "",
+          "inInterfaceId": "iface-internet-isp",
+          "outInterfaceId": "iface-internet-isp",
+          "fromAddress": "",
+          "toAddress": "",
+          "fromPort": "",
+          "toPort": "",
+          "port": "",
+          "peerNodeId": "",
+          "peerInterfaceId": "",
+          "description": ""
+        }
+      ],
       "defaults": {
-        "inbound": "allow",
-        "outbound": "allow",
+        "inbound": "deny",
+        "outbound": "deny",
         "routed": "allow"
       },
       "children": []
@@ -398,8 +416,8 @@
       "name": "Web Server",
       "type": "Bare-metal host",
       "trust": "public",
-      "x": 968.761474609375,
-      "y": 448.9437561035156,
+      "x": 986.5612182617188,
+      "y": 470.3992614746094,
       "interfaces": [
         {
           "id": "iface-web-server-eth0",
@@ -644,9 +662,24 @@
       "conntrack": true,
       "policyTable": "",
       "description": "Web server to storage"
+    },
+    {
+      "id": "link-0f66a35b",
+      "srcNodeId": "node-internet",
+      "srcInterfaceId": "iface-internet-isp",
+      "dstNodeId": "node-home-router",
+      "dstInterfaceId": "iface-home-router-wan",
+      "linkType": "tcp",
+      "protocol": "tcp",
+      "ports": "",
+      "sourcePort": "",
+      "natMode": "none",
+      "conntrack": true,
+      "policyTable": "",
+      "description": ""
     }
   ],
   "metadata": {
-    "updatedAt": "2026-02-10T16:13:45.284Z"
+    "updatedAt": "2026-02-14T10:05:15.940Z"
   }
 }
