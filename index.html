@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RouteTool Network CAD</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260213e">
 </head>
 <body>
   <header class="app-header">
@@ -96,8 +96,30 @@
     </section>
 
     <section class="panel canvas-panel">
-      <h2>Diagram</h2>
+      <div class="diagram-header">
+        <h2>Diagram</h2>
+        <div class="diagram-toolbar">
+          <button id="multi-select-btn" type="button">Multi-Select</button>
+          <span id="multi-select-status" class="legend-pill">Single-node view</span>
+        </div>
+      </div>
       <svg id="topology-canvas" viewBox="0 0 1200 700" aria-label="Network topology"></svg>
+      <div class="diagram-legend" id="diagram-legend" aria-label="Diagram legend">
+        <div class="legend-item">
+          <span class="legend-line legend-allowed" aria-hidden="true"></span>
+          <span>Allowed connection (solid).</span>
+        </div>
+        <div class="legend-item">
+          <span>Arrow in circle: destination is reachable and can route onward. Circle only: destination-only. Arrow only: transit-only. In multi-select, required non-selected transit nodes show triangle arrows only.</span>
+        </div>
+        <div class="legend-item">
+          <span>Source/destination pairs currently visible are listed below.</span>
+        </div>
+        <div class="legend-item">
+          <span>X marker: packet stops due to outbound/routed firewall block or no route to selected destination (destination inbound deny does not draw X).</span>
+        </div>
+        <div class="diagram-legend-pairs" id="diagram-legend-pairs" aria-label="Visible source and destination pairs"></div>
+      </div>
       <p class="hint">Drag nodes to reposition. Connections represent packet intent edges.</p>
     </section>
 
@@ -484,8 +506,40 @@
           </select>
         </label>
         <div class="inline-actions">
+          <button id="open-node-import-btn" type="button">Import</button>
           <button type="submit">Create</button>
           <button id="cancel-node-create-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="node-import-modal" class="w3-modal" aria-hidden="true">
+    <div class="w3-modal-content child-modal-content">
+      <header class="modal-header">
+        <h4>Import Node</h4>
+        <div class="modal-header-actions">
+          <button id="node-import-submit-top-btn" type="button" class="modal-action-btn">Import</button>
+          <button id="close-node-import-modal-btn" type="button" aria-label="Close">&times;</button>
+        </div>
+      </header>
+      <form id="node-import-form" class="stacked-form modal-form">
+        <p class="status-text">Enter the following command into a terminal while logged in as a user with <code>sudo</code> rights (or equivalent):</p>
+        <div class="node-import-command-row">
+          <textarea id="node-import-command" rows="8" readonly></textarea>
+          <button id="copy-node-import-command-btn" type="button">Copy</button>
+        </div>
+        <p class="status-text">Paste the command output below.</p>
+        <div class="inline-actions">
+          <button id="paste-node-import-output-btn" type="button">Paste</button>
+        </div>
+        <label>Captured output
+          <textarea id="node-import-output" rows="16" placeholder="Paste command output here"></textarea>
+        </label>
+        <p id="node-import-status" class="status-text"></p>
+        <div class="inline-actions">
+          <button type="submit">Import</button>
+          <button id="cancel-node-import-btn" type="button">Cancel</button>
         </div>
       </form>
     </div>
@@ -576,6 +630,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=20260210d"></script>
+  <script type="module" src="app.min.js?v=20260213n"></script>
 </body>
 </html>
