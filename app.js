@@ -1,4 +1,4 @@
-import { generateNodeSetup } from "./modules/generator.js?v=20260210d";
+import { generateNodeSetup } from "./modules/generator.js?v=20260213n";
 import {
   cloneState,
   createInitialState,
@@ -8,7 +8,7 @@ import {
   findNode,
   listEndpoints,
   touchState,
-} from "./modules/model.js?v=20260210d";
+} from "./modules/model.js?v=20260213n";
 import {
   childVisibleEndpoints,
   createChildWorkload,
@@ -25,14 +25,14 @@ import {
   getTransitiveReachableEndpoints,
   hostSupportsChildren,
   interfaceDisplayAddress,
-} from "./modules/host-config.js?v=20260210d";
-import { parseInterfaceImport, parseIptablesImport } from "./modules/importers.js?v=20260210d";
-import { setupModal } from "./modules/modal.js?v=20260210d";
-import { buildConnectionLabel, renderTopology } from "./modules/render.js?v=20260210d";
-import { exportToFile, importFromFile, loadInitialState, saveToLocalStorage } from "./modules/storage.js?v=20260210d";
-import { simulateFlow, simulateFlowGraph } from "./modules/simulation.js?v=20260210d";
-import { validateTopology } from "./modules/validation.js?v=20260210d";
-import { buildCidr, parseCidr } from "./modules/utils.js?v=20260210d";
+} from "./modules/host-config.js?v=20260213n";
+import { parseInterfaceImport, parseIptablesImport } from "./modules/importers.js?v=20260213n";
+import { setupModal } from "./modules/modal.js?v=20260213n";
+import { buildConnectionLabel, renderTopology } from "./modules/render.js?v=20260213n";
+import { exportToFile, importFromFile, loadInitialState, saveToLocalStorage } from "./modules/storage.js?v=20260213n";
+import { simulateFlow, simulateFlowGraph } from "./modules/simulation.js?v=20260213n";
+import { validateTopology } from "./modules/validation.js?v=20260213n";
+import { buildCidr, parseCidr } from "./modules/utils.js?v=20260213n";
 
 const dom = {
   canvasPanel: document.querySelector(".canvas-panel"),
@@ -41,6 +41,9 @@ const dom = {
   openConnectionsBtn: document.getElementById("open-connections-btn"),
   openExamplesBtn: document.getElementById("open-examples-btn"),
   openHelpBtn: document.getElementById("open-help-btn"),
+  multiSelectBtn: document.getElementById("multi-select-btn"),
+  multiSelectStatus: document.getElementById("multi-select-status"),
+  diagramLegendPairs: document.getElementById("diagram-legend-pairs"),
   addNodeForm: document.getElementById("add-node-form"),
   addInterfaceForm: document.getElementById("add-interface-form"),
   addLinkForm: document.getElementById("add-link-form"),
@@ -201,8 +204,19 @@ const dom = {
   nodeCreateName: document.getElementById("node-create-name"),
   nodeCreateType: document.getElementById("node-create-type"),
   nodeCreateTrust: document.getElementById("node-create-trust"),
+  openNodeImportBtn: document.getElementById("open-node-import-btn"),
   closeNodeCreateModalBtn: document.getElementById("close-node-create-modal-btn"),
   cancelNodeCreateBtn: document.getElementById("cancel-node-create-btn"),
+  nodeImportModal: document.getElementById("node-import-modal"),
+  nodeImportForm: document.getElementById("node-import-form"),
+  closeNodeImportModalBtn: document.getElementById("close-node-import-modal-btn"),
+  cancelNodeImportBtn: document.getElementById("cancel-node-import-btn"),
+  nodeImportSubmitTopBtn: document.getElementById("node-import-submit-top-btn"),
+  nodeImportCommandInput: document.getElementById("node-import-command"),
+  copyNodeImportCommandBtn: document.getElementById("copy-node-import-command-btn"),
+  pasteNodeImportOutputBtn: document.getElementById("paste-node-import-output-btn"),
+  nodeImportOutput: document.getElementById("node-import-output"),
+  nodeImportStatus: document.getElementById("node-import-status"),
 
   examplesModal: document.getElementById("examples-modal"),
   examplesForm: document.getElementById("examples-form"),
@@ -224,6 +238,8 @@ const dom = {
 let state = createInitialState();
 ensureStateConfig(state);
 let selectedNodeId = "";
+let multiSelectMode = false;
+let multiSelectedIds = [];
 let hostConfigState = {
   hostId: "",
   interfaceId: "",
@@ -279,6 +295,14 @@ const nodeCreateModal = setupModal({
   copyButtons: [],
 });
 
+const nodeImportModal = setupModal({
+  modal: dom.nodeImportModal,
+  closeButton: dom.closeNodeImportModalBtn,
+  tabButtons: [],
+  tabPanels: [],
+  copyButtons: [],
+});
+
 const examplesModal = setupModal({
   modal: dom.examplesModal,
   closeButton: dom.closeExamplesModalBtn,
@@ -322,11 +346,12 @@ const firewallImportModal = setupModal({
 const NODE_WIDTH = 180;
 
 const EXAMPLES = [
-  { id: "default", label: "Default (starter)", path: "examples/default.json" },
-  { id: "network", label: "Network (sample)", path: "examples/network.json" },
+  { id: "blank", label: "Blank", path: "examples/default.json" },
+  { id: "default", label: "Simple Home Network", path: "examples/default.json" },
+  { id: "network", label: "Complex Home Network", path: "examples/network.json" },
   {
     id: "enterprise-edge-access-switches",
-    label: "Enterprise Edge + Access Switches",
+    label: "Simple Enterprise Edge Stack - 2 Branches",
     path: "examples/enterprise-edge-access-switches.json",
   },
 ];
@@ -342,40 +367,58 @@ const ROUTE_COLORS = [
   "#2a8f5f",
 ];
 
+const NODE_IMPORT_COMMAND = [
+  "sudo echo '__ROUTETOOL_HOSTNAME_BEGIN__'",
+  "hostname",
+  "echo '__ROUTETOOL_HOSTNAME_END__'",
+  "echo '__ROUTETOOL_LINK_BEGIN__'",
+  "sudo ip -o link",
+  "echo '__ROUTETOOL_LINK_END__'",
+  "echo '__ROUTETOOL_ADDR_BEGIN__'",
+  "sudo ip -o -4 addr",
+  "echo '__ROUTETOOL_ADDR_END__'",
+  "echo '__ROUTETOOL_ROUTE_BEGIN__'",
+  "sudo ip route",
+  "echo '__ROUTETOOL_ROUTE_END__'",
+  "echo '__ROUTETOOL_IPTABLES_BEGIN__'",
+  "sudo iptables -S",
+  "echo '__ROUTETOOL_IPTABLES_END__'",
+].join(" && ");
+
 const HELP_HTML = `
-  <h5>0. What this tool is for</h5>
+  <h3>0. What this tool is for</h3>
   <p>RouteTool models Linux-style networking (routing, NAT, firewall, WireGuard) in a visual graph. It’s built for systems that support the <code>ip</code> command (Linux, OpenWRT, Android) and common firewall stacks (UFW/iptables/WireGuard).</p>
 
-  <h5>1. What a node is</h5>
+  <h3>1. What a node is</h3>
   <p>A node represents a host, router, VM, container, or abstract Internet. Each node owns interfaces and policies.</p>
 
-  <h5>2. How to add a node</h5>
+  <h3>2. How to add a node</h3>
   <p>Click <strong>Add Node</strong>, fill out name/type/trust, then click <strong>Create</strong>. You can move nodes by dragging them.</p>
 
-  <h5>3. How to add an interface</h5>
+  <h3>3. How to add an interface</h3>
   <p>Open the node’s <strong>Configuration</strong> and add an interface with IP/CIDR and type (physical, bridge, wireguard, etc.).</p>
 
-  <h5>4. Import interfaces from an existing host</h5>
+  <h3>4. Import interfaces from an existing host</h3>
   <p>Use <strong>Import Interfaces</strong> and paste output from:</p>
   <pre>ip -o link\nip -o -4 addr\nip route</pre>
 
-  <h5>5. How to add firewall rules</h5>
+  <h3>5. How to add firewall rules</h3>
   <p>Open <strong>Host Firewall / Routed Rules</strong>, add a rule, choose direction (inbound/outbound/routed), protocol, and addresses/ports.</p>
 
-  <h5>6. How to add routes using firewall rules</h5>
+  <h3>6. How to add routes using firewall rules</h3>
   <p>Use <strong>routed</strong> (or <strong>forward</strong>) rules to allow inter-interface traffic. Defaults control what passes without explicit rules.</p>
 
-  <h5>7. Import firewall rules</h5>
+  <h3>7. Import firewall rules</h3>
   <p>Use <strong>Import iptables</strong> and paste:</p>
   <pre>iptables -S && ip route</pre>
 
-  <h5>8. How the network testing tool works</h5>
+  <h3>8. How the network testing tool works</h3>
   <p>The Interface Test simulates a flow across the intent graph using your rules and defaults. It reports allowed/blocked paths and why.</p>
 
-  <h5>9. How to add a container</h5>
+  <h3>9. How to add a container</h3>
   <p>Open a host’s <strong>Configuration</strong> and use the <strong>Child VMs / Containers</strong> section to add a container or VM and bind it to a host interface.</p>
 
-  <h5>10. Quick container walkthrough</h5>
+  <h3>10. Quick container walkthrough</h3>
   <p>Create a host with a bridge interface (e.g., <code>br0</code>), add a container bound to that bridge, then add routed rules to allow LAN → container traffic. Finally, add inbound rules on the container for the service port you want exposed.</p>
 `;
 
@@ -437,7 +480,7 @@ async function importExample(path) {
 
 function resolveRouteCandidate(state, srcNodeId, srcInterfaceId, dstNodeId, dstInterfaceId, protocol, port) {
   const result = simulateFlowGraph(state, srcNodeId, srcInterfaceId, dstNodeId, dstInterfaceId, protocol, port, "");
-  if (!result || result.status === "invalid" || result.status === "no_path") {
+  if (!result || result.status === "invalid") {
     return null;
   }
   return result;
@@ -463,7 +506,8 @@ function resolveRouteForEndpoint(state, srcNodeId, srcInterfaceId, dstNodeId, ds
     }
   }
 
-  let fallback = null;
+  let blockedFallback = null;
+  let noPathFallback = null;
   for (const candidate of candidates) {
     const result = resolveRouteCandidate(
       state,
@@ -477,49 +521,406 @@ function resolveRouteForEndpoint(state, srcNodeId, srcInterfaceId, dstNodeId, ds
     if (!result) {
       continue;
     }
-    if (!fallback) {
-      fallback = result;
-    }
     if (result.status === "allowed") {
       return result;
     }
+    if (result.status === "blocked" && !blockedFallback) {
+      blockedFallback = result;
+      continue;
+    }
+    if (result.status === "no_path" && !noPathFallback) {
+      noPathFallback = result;
+    }
   }
-  return fallback;
+  return blockedFallback || noPathFallback;
 }
 
-function buildRouteOverlays(state, nodeId) {
+const FLOW_ROUTE_COLORS = [
+  "#1f3a5f",
+  "#0f4c5c",
+  "#264653",
+  "#1d3557",
+  "#3d405b",
+  "#5a2a27",
+  "#6b3f2a",
+  "#2a6f4f",
+  "#7b2c3b",
+  "#2c3e50",
+  "#3b5d2a",
+  "#4b2e83",
+];
+
+function colorForConnectionPair(srcNodeId, srcInterfaceId, dstNodeId, dstInterfaceId) {
+  const key = `${srcNodeId}|${srcInterfaceId}|${dstNodeId}|${dstInterfaceId}`;
+  let hash = 2166136261;
+  for (let i = 0; i < key.length; i += 1) {
+    hash ^= key.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const index = (hash >>> 0) % FLOW_ROUTE_COLORS.length;
+  return FLOW_ROUTE_COLORS[index];
+}
+
+function connectionDedupKey(srcNodeId, srcInterfaceId, dstNodeId) {
+  return `${srcNodeId}|${srcInterfaceId}|${dstNodeId}`;
+}
+
+function flowPortMatches(portRule, flowPort) {
+  const rule = String(portRule || "").trim();
+  const portText = String(flowPort || "").trim();
+  if (!rule || !portText) {
+    return true;
+  }
+  if (rule.includes(":")) {
+    const [start, end] = rule.split(":").map((part) => Number(part.trim()));
+    const value = Number(portText);
+    if (Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(value)) {
+      return value >= start && value <= end;
+    }
+  }
+  if (rule.includes(",")) {
+    return rule.split(",").map((part) => part.trim()).includes(portText);
+  }
+  return rule === portText;
+}
+
+function linkSupportsFlow(link, protocol, port) {
+  const linkProtocol = String(link.protocol || "any");
+  if (linkProtocol !== "any" && linkProtocol !== protocol) {
+    return false;
+  }
+  return flowPortMatches(link.ports, port);
+}
+
+function findConstrainedNoPathRoute(state, srcNodeId, dstNodeId, protocol, port) {
+  const adjacency = new Map();
+  const reverseAdjacency = new Map();
+  for (const link of state.links) {
+    if (!linkSupportsFlow(link, protocol, port)) {
+      continue;
+    }
+    if (!adjacency.has(link.srcNodeId)) {
+      adjacency.set(link.srcNodeId, []);
+    }
+    adjacency.get(link.srcNodeId).push(link);
+    if (!reverseAdjacency.has(link.dstNodeId)) {
+      reverseAdjacency.set(link.dstNodeId, []);
+    }
+    reverseAdjacency.get(link.dstNodeId).push(link);
+  }
+
+  const queue = [srcNodeId];
+  const previous = new Map([[srcNodeId, null]]);
+  const depthByNode = new Map([[srcNodeId, 0]]);
+  while (queue.length) {
+    const nodeId = queue.shift();
+    const depth = depthByNode.get(nodeId) || 0;
+    for (const link of adjacency.get(nodeId) || []) {
+      const nextId = link.dstNodeId;
+      if (previous.has(nextId)) {
+        continue;
+      }
+      previous.set(nextId, nodeId);
+      depthByNode.set(nextId, depth + 1);
+      queue.push(nextId);
+    }
+  }
+
+  const reverseDistance = new Map([[dstNodeId, 0]]);
+  const reverseQueue = [dstNodeId];
+  while (reverseQueue.length) {
+    const nodeId = reverseQueue.shift();
+    const distance = reverseDistance.get(nodeId) || 0;
+    for (const link of reverseAdjacency.get(nodeId) || []) {
+      const prevId = link.srcNodeId;
+      if (reverseDistance.has(prevId)) {
+        continue;
+      }
+      reverseDistance.set(prevId, distance + 1);
+      reverseQueue.push(prevId);
+    }
+  }
+
+  let targetNodeId = srcNodeId;
+  let bestHasDistance = false;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestDepth = 0;
+  for (const [nodeId, parent] of previous.entries()) {
+    if (parent === null) {
+      continue;
+    }
+    const depth = depthByNode.get(nodeId) || 0;
+    const hasDistance = reverseDistance.has(nodeId);
+    const distance = hasDistance ? (reverseDistance.get(nodeId) || 0) : Number.POSITIVE_INFINITY;
+    if (hasDistance && !bestHasDistance) {
+      targetNodeId = nodeId;
+      bestHasDistance = true;
+      bestDistance = distance;
+      bestDepth = depth;
+      continue;
+    }
+    if (hasDistance && bestHasDistance) {
+      if (distance < bestDistance || (distance === bestDistance && depth > bestDepth)) {
+        targetNodeId = nodeId;
+        bestDistance = distance;
+        bestDepth = depth;
+      }
+      continue;
+    }
+    if (!bestHasDistance && depth > bestDepth) {
+      targetNodeId = nodeId;
+      bestDepth = depth;
+    }
+  }
+
+  const path = [];
+  let cursor = targetNodeId;
+  while (cursor !== null && previous.has(cursor)) {
+    path.push(cursor);
+    cursor = previous.get(cursor);
+  }
+  path.reverse();
+
+  if (path.length < 2) {
+    return null;
+  }
+  return {
+    path,
+    segmentKeys: path.slice(0, -1).map((fromId, idx) => {
+      const toId = path[idx + 1];
+      const link = (adjacency.get(fromId) || []).find((candidate) => candidate.dstNodeId === toId);
+      return link
+        ? connectionDedupKey(link.srcNodeId, link.srcInterfaceId, link.dstNodeId)
+        : `${fromId}|${toId}`;
+    }),
+  };
+}
+
+function blockedPathIndexForResult(result) {
+  if (result?.status !== "blocked" || !Array.isArray(result.path) || !result.path.length) {
+    return null;
+  }
+  const rawIndex = Number.isInteger(result.blockedAtIndex)
+    ? result.blockedAtIndex
+    : (result.path.length - 1);
+  return Math.max(0, Math.min(result.path.length - 1, rawIndex));
+}
+
+function blockedSegmentIndexForResult(result) {
+  if (result?.status !== "blocked" || !Array.isArray(result.path) || result.path.length < 2) {
+    return null;
+  }
+  const pathIndex = blockedPathIndexForResult(result);
+  return Math.max(0, Math.min(result.path.length - 2, pathIndex - 1));
+}
+
+function buildConnectionOverlay(id, link, direction) {
+  const srcNodeId = link.srcNodeId;
+  const srcInterfaceId = link.srcInterfaceId;
+  const dstNodeId = link.dstNodeId;
+  const dstInterfaceId = link.dstInterfaceId;
+  const color = colorForConnectionPair(srcNodeId, srcInterfaceId, dstNodeId, dstInterfaceId);
+  return {
+    id,
+    srcNodeId,
+    srcInterfaceId,
+    dstNodeId,
+    dstInterfaceId,
+    flowKey: `${srcNodeId}|${srcInterfaceId}|${dstNodeId}|${dstInterfaceId}`,
+    segmentKeys: [connectionDedupKey(srcNodeId, srcInterfaceId, dstNodeId)],
+    path: [srcNodeId, dstNodeId],
+    blocked: false,
+    blockedAtPathIndex: null,
+    blockedNodeId: "",
+    blockedSegmentIndex: null,
+    blockedAtNodeName: "",
+    direction,
+    color,
+  };
+}
+
+function buildConnectionOverlaysForNode(state, nodeId) {
   const node = findNode(state, nodeId);
   if (!node) {
     return [];
   }
-  const endpoints = listEndpoints(state).filter((endpoint) => endpoint.nodeId !== nodeId);
-  const routes = [];
-  let colorIndex = 0;
+  const overlays = [];
+  const seen = new Set();
+  let overlayIndex = 0;
+  const links = [...state.links]
+    .filter((link) => link.srcNodeId === nodeId || link.dstNodeId === nodeId)
+    .sort((a, b) => a.id.localeCompare(b.id));
 
-  for (const iface of node.interfaces) {
-    for (const endpoint of endpoints) {
-      const result = resolveRouteForEndpoint(state, node.id, iface.id, endpoint.nodeId, endpoint.interfaceId);
-      if (!result || !result.path || result.status === "no_path") {
+  for (const link of links) {
+    const dedupe = connectionDedupKey(link.srcNodeId, link.srcInterfaceId, link.dstNodeId);
+    if (seen.has(dedupe)) {
+      continue;
+    }
+    seen.add(dedupe);
+    const direction = link.srcNodeId === nodeId ? "outbound" : "inbound";
+    overlays.push(buildConnectionOverlay(`conn-node-${link.id}-${overlayIndex}`, link, direction));
+    overlayIndex += 1;
+  }
+
+  return overlays;
+}
+
+function buildConnectionOverlaysForIds(state, nodeIds) {
+  const overlays = [];
+  const selectedNodes = nodeIds.map((id) => findNode(state, id)).filter(Boolean);
+  const seenRoute = new Set();
+  let overlayIndex = 0;
+
+  for (const srcNode of selectedNodes) {
+    for (const dstNode of selectedNodes) {
+      if (!srcNode || !dstNode || srcNode.id === dstNode.id) {
         continue;
       }
-      const blockedMarker = result.status === "blocked"
-        ? {
-            segmentIndex: Math.max(0, (result.blockedAtIndex || 0) - 1),
-            position: result.blockedAtIndex === 0 ? "start" : "end",
+      for (const srcIface of srcNode.interfaces || []) {
+        for (const dstIface of dstNode.interfaces || []) {
+          const result = resolveRouteForEndpoint(state, srcNode.id, srcIface.id, dstNode.id, dstIface.id);
+          if (!result) {
+            continue;
           }
-        : null;
-      routes.push({
-        id: `route-${node.id}-${iface.id}-${endpoint.nodeId}-${endpoint.interfaceId}`,
-        path: result.path,
-        blocked: result.status === "blocked",
-        blockedMarker,
-        color: ROUTE_COLORS[colorIndex % ROUTE_COLORS.length],
-      });
-      colorIndex += 1;
+          const routeKey = `${srcNode.id}|${srcIface.id}|${dstNode.id}|${dstIface.id}`;
+          if (seenRoute.has(routeKey)) {
+            continue;
+          }
+          seenRoute.add(routeKey);
+          const color = colorForConnectionPair(srcNode.id, srcIface.id, dstNode.id, dstIface.id);
+
+          if (result.status === "no_path") {
+            const constrainedRoute = findConstrainedNoPathRoute(
+              state,
+              srcNode.id,
+              dstNode.id,
+              result.protocol || "any",
+              result.port || "",
+            );
+            if (!constrainedRoute || !Array.isArray(constrainedRoute.path) || constrainedRoute.path.length < 2) {
+              continue;
+            }
+            const blockedNodeId = constrainedRoute.path[constrainedRoute.path.length - 1] || srcNode.id;
+            overlays.push({
+              id: `route-ms-${srcNode.id}-${srcIface.id}-${dstNode.id}-${dstIface.id}-${overlayIndex}`,
+              srcNodeId: srcNode.id,
+              srcInterfaceId: srcIface.id,
+              dstNodeId: dstNode.id,
+              dstInterfaceId: dstIface.id,
+              flowKey: routeKey,
+              segmentKeys: constrainedRoute.segmentKeys,
+              path: constrainedRoute.path,
+              blocked: true,
+              blockedAtPathIndex: constrainedRoute.path.length - 1,
+              blockedNodeId,
+              blockedSegmentIndex: constrainedRoute.path.length - 2,
+              blockedAtNodeName: findNode(state, blockedNodeId)?.name || blockedNodeId,
+              direction: "paired",
+              color,
+            });
+            overlayIndex += 1;
+            continue;
+          }
+
+          if (!Array.isArray(result.path) || result.path.length < 2) {
+            continue;
+          }
+
+          const blockedAtPathIndex = blockedPathIndexForResult(result);
+          const blockedSegmentIndex = blockedSegmentIndexForResult(result);
+          const blockedNodeIdRaw = blockedAtPathIndex === null ? "" : (result.path[blockedAtPathIndex] || "");
+          const blockedAtNodeNameRaw = blockedNodeIdRaw ? (findNode(state, blockedNodeIdRaw)?.name || blockedNodeIdRaw) : "";
+          const blockedPhase = result.blockDecision?.phase || "";
+          const showBlockedMarker = result.status === "blocked" && blockedPhase !== "inbound";
+          const segmentKeys = Array.isArray(result.hopLinks) && result.hopLinks.length
+            ? result.hopLinks.map((hopLink) => connectionDedupKey(hopLink.srcNodeId, hopLink.srcInterfaceId, hopLink.dstNodeId))
+            : result.path.slice(0, -1).map((fromId, idx) => `${fromId}|${result.path[idx + 1]}`);
+
+          overlays.push({
+            id: `route-ms-${srcNode.id}-${srcIface.id}-${dstNode.id}-${dstIface.id}-${overlayIndex}`,
+            srcNodeId: srcNode.id,
+            srcInterfaceId: srcIface.id,
+            dstNodeId: dstNode.id,
+            dstInterfaceId: dstIface.id,
+            flowKey: routeKey,
+            segmentKeys,
+            path: result.path,
+            blocked: showBlockedMarker,
+            blockedAtPathIndex: showBlockedMarker ? blockedAtPathIndex : null,
+            blockedNodeId: showBlockedMarker ? blockedNodeIdRaw : "",
+            blockedSegmentIndex: showBlockedMarker ? blockedSegmentIndex : null,
+            blockedAtNodeName: showBlockedMarker ? blockedAtNodeNameRaw : "",
+            direction: "paired",
+            color,
+          });
+          overlayIndex += 1;
+        }
+      }
     }
   }
 
-  return routes;
+  return overlays;
+}
+
+function endpointLegendLabel(nodeId, interfaceId) {
+  const node = findNode(state, nodeId);
+  const iface = node ? findIfaceOnNode(node, interfaceId) : null;
+  const nodeName = node?.name || nodeId;
+  const ifaceName = iface?.name || interfaceId || "?";
+  return `${nodeName}:${ifaceName}`;
+}
+
+function renderDiagramLegend(connectionOverlays) {
+  if (!dom.diagramLegendPairs) {
+    return;
+  }
+  dom.diagramLegendPairs.innerHTML = "";
+  if (!connectionOverlays.length) {
+    const empty = document.createElement("span");
+    empty.className = "legend-pair-empty";
+    empty.textContent = "No connections in the current view.";
+    dom.diagramLegendPairs.appendChild(empty);
+    return;
+  }
+
+  const pairs = new Map();
+  for (const overlay of connectionOverlays) {
+    const key = connectionDedupKey(overlay.srcNodeId, overlay.srcInterfaceId, overlay.dstNodeId);
+    if (!pairs.has(key)) {
+      pairs.set(key, overlay);
+    }
+  }
+  const sorted = [...pairs.values()].sort((a, b) => {
+    const left = endpointLegendLabel(a.srcNodeId, a.srcInterfaceId);
+    const right = endpointLegendLabel(b.srcNodeId, b.srcInterfaceId);
+    return left.localeCompare(right);
+  });
+  for (const overlay of sorted) {
+    const item = document.createElement("div");
+    item.className = "legend-pair-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = "legend-pair-swatch";
+    swatch.style.backgroundColor = overlay.color;
+
+    const source = document.createElement("span");
+    source.className = "legend-pair-source";
+    source.textContent = endpointLegendLabel(overlay.srcNodeId, overlay.srcInterfaceId);
+
+    const arrow = document.createElement("span");
+    arrow.className = "legend-pair-arrow";
+    arrow.textContent = "->";
+
+    const destination = document.createElement("span");
+    destination.className = "legend-pair-dest";
+    destination.textContent = endpointLegendLabel(overlay.dstNodeId, overlay.dstInterfaceId);
+
+    item.appendChild(swatch);
+    item.appendChild(source);
+    item.appendChild(arrow);
+    item.appendChild(destination);
+    dom.diagramLegendPairs.appendChild(item);
+  }
 }
 
 function persistAndRender() {
@@ -644,8 +1045,25 @@ function renderAll() {
   renderNodeSelect();
   renderEndpointSelects();
   renderConnectionSelect();
-  const routeOverlays = selectedNodeId ? buildRouteOverlays(state, selectedNodeId) : [];
-  renderTopology(dom.canvas, state, selectedNodeId, onSelectNode, onMoveNode, onNodeDoubleClick, routeOverlays, false);
+  const activeIds = multiSelectMode ? multiSelectedIds : (selectedNodeId ? [selectedNodeId] : []);
+  let routeOverlays = [];
+  if (activeIds.length === 1) {
+    routeOverlays = buildConnectionOverlaysForNode(state, activeIds[0]);
+  } else if (activeIds.length > 1) {
+    routeOverlays = buildConnectionOverlaysForIds(state, activeIds);
+  }
+  renderDiagramLegend(routeOverlays);
+  renderTopology(
+    dom.canvas,
+    state,
+    selectedNodeId,
+    onSelectNode,
+    onMoveNode,
+    onNodeDoubleClick,
+    routeOverlays,
+    false,
+    multiSelectMode ? multiSelectedIds : [],
+  );
   renderModelJson();
 }
 
@@ -797,7 +1215,12 @@ function renderModelJson() {
 }
 
 function onSelectNode(nodeId) {
+  if (multiSelectMode) {
+    toggleMultiSelected(nodeId);
+    return;
+  }
   selectedNodeId = nodeId;
+  multiSelectedIds = [nodeId];
   if ([...dom.selectedNode.options].some((option) => option.value === nodeId)) {
     dom.selectedNode.value = nodeId;
   }
@@ -813,6 +1236,49 @@ function onMoveNode(nodeId, x, y) {
   node.y = y;
   saveToLocalStorage(state);
   renderAll();
+}
+
+function toggleMultiSelected(nodeId) {
+  const idx = multiSelectedIds.indexOf(nodeId);
+  if (idx >= 0) {
+    multiSelectedIds.splice(idx, 1);
+  } else {
+    multiSelectedIds.push(nodeId);
+  }
+  if (!multiSelectedIds.length) {
+    selectedNodeId = "";
+  } else {
+    selectedNodeId = multiSelectedIds[0];
+  }
+  if ([...dom.selectedNode.options].some((option) => option.value === selectedNodeId)) {
+    dom.selectedNode.value = selectedNodeId;
+  }
+  updateMultiSelectStatus();
+  renderAll();
+}
+
+function setMultiSelectMode(enabled) {
+  multiSelectMode = enabled;
+  if (!enabled) {
+    multiSelectedIds = selectedNodeId ? [selectedNodeId] : [];
+  } else if (!multiSelectedIds.length && selectedNodeId) {
+    multiSelectedIds = [selectedNodeId];
+  }
+  dom.multiSelectBtn?.classList.toggle("active", enabled);
+  updateMultiSelectStatus();
+  renderAll();
+}
+
+function updateMultiSelectStatus() {
+  if (!dom.multiSelectStatus) {
+    return;
+  }
+  const label = multiSelectMode
+    ? multiSelectedIds.length
+      ? `${multiSelectedIds.length} node(s) selected`
+      : "Select nodes"
+    : "Single-node view";
+  dom.multiSelectStatus.textContent = label;
 }
 
 function runValidation() {
@@ -1846,6 +2312,105 @@ function addNodeToState({ name, type, trust }) {
   return node;
 }
 
+function parseCapturedHostname(text) {
+  const lines = String(text || "").split(/\r?\n/);
+  let inHostnameSection = false;
+
+  for (const rawLine of lines) {
+    const line = String(rawLine || "").trim();
+    if (!line) {
+      continue;
+    }
+    if (line === "__ROUTETOOL_HOSTNAME_BEGIN__") {
+      inHostnameSection = true;
+      continue;
+    }
+    if (line === "__ROUTETOOL_HOSTNAME_END__") {
+      break;
+    }
+    if (!inHostnameSection) {
+      continue;
+    }
+    if (line.startsWith("sudo:")) {
+      continue;
+    }
+    const token = line.split(/\s+/)[0];
+    if (/^[a-zA-Z0-9._-]+$/.test(token)) {
+      return token;
+    }
+  }
+
+  return "";
+}
+
+function importNodeFromCapturedOutput(captureText) {
+  const { interfaces: importedInterfaces, warnings: interfaceWarnings } = parseInterfaceImport(captureText);
+  const { defaults, rules, routes, warnings: firewallWarnings } = parseIptablesImport(captureText);
+
+  if (!importedInterfaces.length && !rules.length && !routes.length && !Object.keys(defaults).length) {
+    return {
+      error: "No importable interface, firewall, or route data was detected in the pasted output.",
+    };
+  }
+
+  const parsedName = parseCapturedHostname(captureText);
+  const fallbackName = dom.nodeCreateName.value.trim() || `imported-node-${state.nodes.length + 1}`;
+  const requestedType = dom.nodeCreateType.value || "Bare-metal host";
+  const safeType = requestedType === "Container" ? "Bare-metal host" : requestedType;
+  const trust = dom.nodeCreateTrust.value || "private";
+  const node = addNodeToState({
+    name: parsedName || fallbackName,
+    type: safeType,
+    trust,
+  });
+
+  if (!node) {
+    return { error: "Unable to create imported node." };
+  }
+
+  if (importedInterfaces.length) {
+    applyImportedInterfaces(node, importedInterfaces);
+  }
+
+  if (defaults.inbound) {
+    node.defaults.inbound = defaults.inbound;
+  }
+  if (defaults.outbound) {
+    node.defaults.outbound = defaults.outbound;
+  }
+  if (defaults.routed) {
+    node.defaults.routed = defaults.routed;
+  }
+
+  const { importedCount, skippedCount } = applyImportedFirewallRules(node, rules);
+  const importedConnections = inferConnectionsFromImportedRoutes(node, routes);
+
+  persistAndRender();
+
+  return {
+    node,
+    importedInterfaces: importedInterfaces.length,
+    importedRules: importedCount,
+    skippedRules: skippedCount,
+    importedConnections,
+    warnings: [...interfaceWarnings, ...firewallWarnings],
+    forcedType: requestedType === "Container",
+  };
+}
+
+function openNodeImportModalDialog() {
+  if (dom.nodeImportCommandInput) {
+    dom.nodeImportCommandInput.value = NODE_IMPORT_COMMAND;
+  }
+  if (dom.nodeImportOutput) {
+    dom.nodeImportOutput.value = "";
+  }
+  if (dom.nodeImportStatus) {
+    dom.nodeImportStatus.textContent = "Paste captured output and click Import to create and populate a node.";
+  }
+  nodeImportModal.open();
+}
+
 function attachEvents() {
   const dirtyFields = [
     dom.hostDefaultInbound,
@@ -1865,6 +2430,10 @@ function attachEvents() {
     nodeCreateModal.open();
   });
 
+  dom.openNodeImportBtn?.addEventListener("click", () => {
+    openNodeImportModalDialog();
+  });
+
   dom.cancelNodeCreateBtn.addEventListener("click", () => {
     nodeCreateModal.requestClose("button");
   });
@@ -1881,6 +2450,69 @@ function attachEvents() {
     }
     persistAndRender();
     nodeCreateModal.requestClose("button");
+  });
+
+  dom.cancelNodeImportBtn?.addEventListener("click", () => {
+    nodeImportModal.requestClose("button");
+  });
+
+  dom.copyNodeImportCommandBtn?.addEventListener("click", async () => {
+    const command = dom.nodeImportCommandInput?.value || NODE_IMPORT_COMMAND;
+    try {
+      await navigator.clipboard.writeText(command);
+      dom.nodeImportStatus.textContent = "Command copied.";
+    } catch (error) {
+      dom.nodeImportStatus.textContent = "Copy failed. Select command text manually and copy.";
+    }
+  });
+
+  dom.pasteNodeImportOutputBtn?.addEventListener("click", async () => {
+    try {
+      const clip = await navigator.clipboard.readText();
+      dom.nodeImportOutput.value = clip || "";
+      dom.nodeImportStatus.textContent = clip
+        ? "Pasted clipboard output."
+        : "Clipboard is empty.";
+    } catch (error) {
+      dom.nodeImportStatus.textContent = "Paste failed. Paste manually into the output box.";
+    }
+  });
+
+  dom.nodeImportSubmitTopBtn?.addEventListener("click", () => {
+    dom.nodeImportForm?.requestSubmit();
+  });
+
+  dom.nodeImportForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const captureText = String(dom.nodeImportOutput?.value || "");
+    if (!captureText.trim()) {
+      dom.nodeImportStatus.textContent = "Paste captured output before importing.";
+      return;
+    }
+
+    const result = importNodeFromCapturedOutput(captureText);
+    if (result.error) {
+      dom.nodeImportStatus.textContent = result.error;
+      return;
+    }
+
+    nodeImportModal.requestClose("button");
+    nodeCreateModal.requestClose("button");
+    dom.nodeImportOutput.value = "";
+    const summary = [
+      `Imported node: ${result.node.name}`,
+      `Interfaces: ${result.importedInterfaces}`,
+      `Firewall rules imported: ${result.importedRules}`,
+      `Firewall rules skipped: ${result.skippedRules}`,
+      `Connections inferred: ${result.importedConnections}`,
+    ];
+    if (result.forcedType) {
+      summary.push("Container type selection is ignored for import (container import is not supported yet).");
+    }
+    if (result.warnings.length) {
+      summary.push(`Warnings: ${result.warnings.join(" | ")}`);
+    }
+    alert(summary.join("\n"));
   });
 
   dom.addNodeForm.addEventListener("submit", (event) => {
@@ -2004,11 +2636,11 @@ function attachEvents() {
       hostConfigState.connectionId = primaryLinkId;
     }
 
-    dom.addLinkForm.reset();
-    syncLinkFormUi();
-    persistAndRender();
-    const hostModal = document.getElementById("host-config-modal");
-    if (hostModal && hostModal.classList.contains("open")) {
+  dom.addLinkForm.reset();
+  syncLinkFormUi();
+  persistAndRender();
+  const hostModal = document.getElementById("host-config-modal");
+  if (hostModal && hostModal.classList.contains("open")) {
       renderHostConfigurationModal();
     }
     connectionsModal.requestClose("button");
@@ -2016,6 +2648,8 @@ function attachEvents() {
 
   dom.selectedNode.addEventListener("change", () => {
     selectedNodeId = dom.selectedNode.value;
+    multiSelectedIds = selectedNodeId ? [selectedNodeId] : [];
+    updateMultiSelectStatus();
     renderAll();
   });
 
@@ -2038,6 +2672,7 @@ function attachEvents() {
   dom.openHelpBtn.addEventListener("click", () => display_help(HELP_HTML));
   dom.helpCloseBtn.addEventListener("click", () => helpModal.requestClose("button"));
   window.addEventListener("resize", () => renderAll());
+  dom.multiSelectBtn?.addEventListener("click", () => setMultiSelectMode(!multiSelectMode));
   dom.nodeConfigNameInput?.addEventListener("change", updateHostConfigFromForm);
   dom.nodeConfigTypeSelect?.addEventListener("change", updateHostConfigFromForm);
   dom.nodeConfigTrustSelect?.addEventListener("change", updateHostConfigFromForm);
@@ -2474,11 +3109,13 @@ async function bootstrap() {
   state = cloneState(loaded);
   ensureStateConfig(state);
   selectedNodeId = state.nodes[0]?.id || "";
+  multiSelectedIds = selectedNodeId ? [selectedNodeId] : [];
   renderExampleOptions();
   window.display_help = display_help;
   attachEvents();
   syncInterfaceFormUi();
   syncLinkFormUi();
+  updateMultiSelectStatus();
   renderAll();
   runValidation();
 }
